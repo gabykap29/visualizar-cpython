@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkpoint 11: All Panels Integration Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            padding: 20px;
+            background-color: #0d1117;
+            color: #c9d1d9;
+        }
+        
+        h1 {
+            color: #58a6ff;
+            margin-bottom: 20px;
+        }
+        
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+        
+        .test-result {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+        }
+        
+        .test-result.pass {
+            background-color: rgba(63, 185, 80, 0.2);
+            border-left: 4px solid #3fb950;
+        }
+        
+        .test-result.fail {
+            background-color: rgba(248, 81, 73, 0.2);
+            border-left: 4px solid #f85149;
+        }
+        
+        .summary {
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        
+        .summary.pass {
+            background-color: rgba(63, 185, 80, 0.2);
+            color: #3fb950;
+        }
+        
+        .summary.fail {
+            background-color: rgba(248, 81, 73, 0.2);
+            color: #f85149;
+        }
+        
+        iframe {
+            width: 100%;
+            height: 600px;
+            border: 2px solid #58a6ff;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Checkpoint 11: All Panels Integration Test</h1>
+    <p>This test verifies that all visualization panels are correctly implemented and render properly.</p>
+    
+    <div class="test-section">
+        <h2>Panel Structure Tests</h2>
+        <div id="structure-tests"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>CSS Styling Tests</h2>
+        <div id="styling-tests"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>AnimationManager Integration Tests</h2>
+        <div id="animation-tests"></div>
+    </div>
+    
+    <div id="summary" class="summary"></div>
+    
+    <h2>Visual Preview</h2>
+    <iframe src="../index.html"></iframe>
+    
+    <script>
+        let totalTests = 0;
+        let passedTests = 0;
+        
+        function runTest(name, testFn) {
+            totalTests++;
+            try {
+                testFn();
+                passedTests++;
+                return { name, passed: true };
+            } catch (error) {
+                return { name, passed: false, error: error.message };
+            }
+        }
+        
+        function displayResults(containerId, results) {
+            const container = document.getElementById(containerId);
+            results.forEach(result => {
+                const div = document.createElement('div');
+                div.className = `test-result ${result.passed ? 'pass' : 'fail'}`;
+                div.textContent = `${result.passed ? '✓' : '✗'} ${result.name}`;
+                if (result.error) {
+                    div.textContent += ` - ${result.error}`;
+                }
+                container.appendChild(div);
+            });
+        }
+        
+        // Load index.html content for testing
+        fetch('../index.html')
+            .then(response => response.text())
+            .then(html => {
+                // Structure Tests
+                const structureTests = [
+                    runTest('Monaco Editor container exists', () => {
+                        if (!html.includes('id="monaco-container"')) throw new Error('Missing monaco-container');
+                    }),
+                    runTest('Pipeline Diagram exists', () => {
+                        if (!html.includes('id="pipeline-diagram"')) throw new Error('Missing pipeline-diagram');
+                    }),
+                    runTest('Bytecode Panel exists', () => {
+                        if (!html.includes('id="bytecode-panel"')) throw new Error('Missing bytecode-panel');
+                    }),
+                    runTest('Stack Panel exists', () => {
+                        if (!html.includes('id="stack-panel"')) throw new Error('Missing stack-panel');
+                    }),
+                    runTest('Memory Panel exists', () => {
+                        if (!html.includes('id="memory-panel"')) throw new Error('Missing memory-panel');
+                    }),
+                    runTest('GIL Indicator exists', () => {
+                        if (!html.includes('id="gil-indicator"')) throw new Error('Missing gil-indicator');
+                    }),
+                    runTest('All 6 pipeline stages present', () => {
+                        const stages = ['source', 'tokenizer', 'parser', 'compiler', 'bytecode', 'pvm'];
+                        stages.forEach(stage => {
+                            if (!html.includes(`data-stage="${stage}"`)) {
+                                throw new Error(`Missing pipeline stage: ${stage}`);
+                            }
+                        });
+                    })
+                ];
+                
+                displayResults('structure-tests', structureTests);
+                
+                // Load CSS for styling tests
+                return fetch('../src/styles/main.css').then(response => response.text());
+            })
+            .then(css => {
+                // Styling Tests
+                const stylingTests = [
+                    runTest('Dark theme variables defined', () => {
+                        if (!css.includes('--bg-primary: #0d1117')) throw new Error('Missing bg-primary');
+                        if (!css.includes('--accent-color: #58a6ff')) throw new Error('Missing accent-color');
+                    }),
+                    runTest('Pipeline stage styles defined', () => {
+                        if (!css.includes('.pipeline-stage')) throw new Error('Missing pipeline-stage styles');
+                        if (!css.includes('.pipeline-stage.active')) throw new Error('Missing active state');
+                    }),
+                    runTest('Bytecode panel styles defined', () => {
+                        if (!css.includes('#bytecode-panel')) throw new Error('Missing bytecode-panel styles');
+                        if (!css.includes('.bytecode-instruction')) throw new Error('Missing instruction styles');
+                    }),
+                    runTest('Stack panel styles defined', () => {
+                        if (!css.includes('#stack-panel')) throw new Error('Missing stack-panel styles');
+                        if (!css.includes('.stack-frame')) throw new Error('Missing frame styles');
+                        if (!css.includes('@keyframes stackPush')) throw new Error('Missing push animation');
+                        if (!css.includes('@keyframes stackPop')) throw new Error('Missing pop animation');
+                    }),
+                    runTest('Memory panel styles defined', () => {
+                        if (!css.includes('#memory-panel')) throw new Error('Missing memory-panel styles');
+                        if (!css.includes('.memory-object')) throw new Error('Missing object styles');
+                        if (!css.includes('@keyframes objectAllocate')) throw new Error('Missing allocate animation');
+                        if (!css.includes('@keyframes objectDeallocate')) throw new Error('Missing deallocate animation');
+                    }),
+                    runTest('GIL indicator styles defined', () => {
+                        if (!css.includes('#gil-indicator')) throw new Error('Missing gil-indicator styles');
+                        if (!css.includes('.gil-acquired')) throw new Error('Missing acquired state');
+                        if (!css.includes('.gil-released')) throw new Error('Missing released state');
+                    }),
+                    runTest('All transitions use 300ms duration', () => {
+                        if (!css.includes('--transition-duration: 300ms')) throw new Error('Missing transition duration variable');
+                    })
+                ];
+                
+                displayResults('styling-tests', stylingTests);
+                
+                // Load AnimationManager for integration tests
+                return fetch('../src/scripts/animation-manager.js').then(response => response.text());
+            })
+            .then(animationManager => {
+                // AnimationManager Integration Tests
+                const animationTests = [
+                    runTest('AnimationManager class exists', () => {
+                        if (!animationManager.includes('class AnimationManager')) throw new Error('Missing AnimationManager class');
+                    }),
+                    runTest('updateAll method exists', () => {
+                        if (!animationManager.includes('updateAll(state)')) throw new Error('Missing updateAll method');
+                    }),
+                    runTest('updateMonacoHighlight method implemented', () => {
+                        if (!animationManager.includes('updateMonacoHighlight(lineNumber)')) throw new Error('Missing updateMonacoHighlight');
+                    }),
+                    runTest('updatePipelineStage method implemented', () => {
+                        if (!animationManager.includes('updatePipelineStage(stage)')) throw new Error('Missing updatePipelineStage');
+                    }),
+                    runTest('updateBytecodePointer method implemented', () => {
+                        if (!animationManager.includes('updateBytecodePointer(instructionPointer, bytecode')) throw new Error('Missing updateBytecodePointer');
+                    }),
+                    runTest('updateStackFrames method implemented', () => {
+                        if (!animationManager.includes('updateStackFrames(callStack)')) throw new Error('Missing updateStackFrames');
+                    }),
+                    runTest('updateMemoryObjects method implemented', () => {
+                        if (!animationManager.includes('updateMemoryObjects(heap)')) throw new Error('Missing updateMemoryObjects');
+                    }),
+                    runTest('updateGILStatus method implemented', () => {
+                        if (!animationManager.includes('updateGILStatus(gilStatus)')) throw new Error('Missing updateGILStatus');
+                    }),
+                    runTest('Performance timing implemented', () => {
+                        if (!animationManager.includes('performance.now()')) throw new Error('Missing performance timing');
+                        if (!animationManager.includes('50ms')) throw new Error('Missing 50ms budget check');
+                    })
+                ];
+                
+                displayResults('animation-tests', animationTests);
+                
+                // Display summary
+                const summary = document.getElementById('summary');
+                const passRate = ((passedTests / totalTests) * 100).toFixed(1);
+                summary.className = `summary ${passedTests === totalTests ? 'pass' : 'fail'}`;
+                summary.textContent = `Results: ${passedTests}/${totalTests} tests passed (${passRate}%)`;
+                
+                if (passedTests === totalTests) {
+                    summary.textContent += ' - ✓ All panels are correctly implemented!';
+                } else {
+                    summary.textContent += ` - ✗ ${totalTests - passedTests} test(s) failed`;
+                }
+            })
+            .catch(error => {
+                console.error('Test error:', error);
+                const summary = document.getElementById('summary');
+                summary.className = 'summary fail';
+                summary.textContent = `Error running tests: ${error.message}`;
+            });
+    </script>
+</body>
+</html>

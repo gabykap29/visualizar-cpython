@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task 8.2 Integration Test - Stack Frame Rendering</title>
+    <style>
+        :root {
+            --background-color: #0d1117;
+            --text-primary: #c9d1d9;
+            --accent-color: #58a6ff;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --transition-duration: 300ms;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-primary);
+            padding: 20px;
+            margin: 0;
+        }
+        
+        h1 {
+            color: var(--accent-color);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+        
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            background-color: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+        
+        .test-section h2 {
+            color: var(--accent-color);
+            margin-top: 0;
+        }
+        
+        #test-output {
+            background-color: #000;
+            color: #0f0;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            margin-top: 20px;
+        }
+        
+        button {
+            background-color: var(--accent-color);
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            margin-right: 10px;
+        }
+        
+        button:hover {
+            background-color: #4a8fd8;
+        }
+        
+        /* Stack Panel Styles (copied from main app) */
+        #stack-panel {
+            width: 400px;
+            background-color: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        
+        #stack-content {
+            display: flex;
+            flex-direction: column-reverse;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            min-height: 200px;
+        }
+        
+        .stack-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: rgba(201, 209, 217, 0.5);
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .stack-empty-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+        
+        .stack-empty-text {
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        
+        .stack-empty-hint {
+            font-size: 11px;
+            color: rgba(201, 209, 217, 0.3);
+        }
+        
+        .stack-frame {
+            width: 90%;
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            transition: all var(--transition-duration) ease-in-out;
+            cursor: default;
+            position: relative;
+        }
+        
+        .stack-frame:hover {
+            background-color: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .stack-frame.active {
+            border-color: var(--accent-color);
+            background-color: rgba(88, 166, 255, 0.1);
+        }
+        
+        .stack-frame.pushing {
+            animation: stackPush var(--transition-duration) ease-in-out;
+        }
+        
+        @keyframes stackPush {
+            0% {
+                opacity: 0;
+                transform: translateY(20px) scale(0.9);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        .stack-frame.popping {
+            animation: stackPop var(--transition-duration) ease-in-out;
+        }
+        
+        @keyframes stackPop {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-20px) scale(0.9);
+            }
+        }
+        
+        .stack-frame-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .stack-frame-function {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--accent-color);
+            font-family: 'Courier New', 'Consolas', monospace;
+        }
+        
+        .stack-frame.active .stack-frame-function {
+            color: #ffffff;
+        }
+        
+        .stack-frame-id {
+            font-size: 10px;
+            color: rgba(201, 209, 217, 0.4);
+            font-family: 'Courier New', 'Consolas', monospace;
+        }
+        
+        .stack-frame-body {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .stack-frame-locals {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .stack-frame-section-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: rgba(201, 209, 217, 0.6);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        
+        .stack-frame-variable {
+            display: flex;
+            align-items: center;
+            padding: 4px 8px;
+            background-color: rgba(255, 255, 255, 0.03);
+            border-radius: 4px;
+            font-family: 'Courier New', 'Consolas', monospace;
+            font-size: 12px;
+        }
+        
+        .stack-frame-variable:hover {
+            background-color: rgba(255, 255, 255, 0.06);
+        }
+        
+        .stack-frame-var-name {
+            color: var(--accent-color);
+            font-weight: 600;
+            margin-right: 8px;
+        }
+        
+        .stack-frame-var-separator {
+            color: rgba(201, 209, 217, 0.4);
+            margin-right: 8px;
+        }
+        
+        .stack-frame-var-value {
+            color: var(--text-primary);
+            word-break: break-all;
+        }
+        
+        .stack-frame-return {
+            display: flex;
+            align-items: center;
+            padding: 4px 8px;
+            background-color: rgba(255, 255, 255, 0.03);
+            border-radius: 4px;
+            font-family: 'Courier New', 'Consolas', monospace;
+            font-size: 11px;
+            margin-top: 4px;
+        }
+        
+        .stack-frame-return-label {
+            color: rgba(201, 209, 217, 0.6);
+            margin-right: 8px;
+        }
+        
+        .stack-frame-return-address {
+            color: var(--accent-color);
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <h1>Task 8.2 Integration Test: Stack Frame Rendering and Animations</h1>
+    
+    <div class="test-section">
+        <h2>Requirements Validation</h2>
+        <p>This test validates the following requirements:</p>
+        <ul>
+            <li><strong>4.2:</strong> Animate new card pushing onto stack with CSS transition (200-400ms)</li>
+            <li><strong>4.3:</strong> Animate top card popping from stack with CSS transition (200-400ms)</li>
+            <li><strong>4.4:</strong> Display function name, local variables with values, and return address</li>
+            <li><strong>4.5:</strong> Position most recent frame at top of visual stack</li>
+        </ul>
+    </div>
+    
+    <div class="test-section">
+        <h2>Interactive Demo</h2>
+        <p>Use the buttons below to test stack frame rendering and animations:</p>
+        
+        <button onclick="showEmptyStack()">Show Empty Stack</button>
+        <button onclick="showSingleFrame()">Show Single Frame</button>
+        <button onclick="pushFrame()">Push Frame</button>
+        <button onclick="popFrame()">Pop Frame</button>
+        <button onclick="showComplexStack()">Show Complex Stack</button>
+        
+        <div id="stack-panel">
+            <div id="stack-content">
+                <div class="stack-placeholder">
+                    <div class="stack-empty-icon">📚</div>
+                    <p class="stack-empty-text">No stack frames yet</p>
+                    <p class="stack-empty-hint">Click a button above to test</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Automated Tests</h2>
+        <button onclick="runTests()">Run All Tests</button>
+        <div id="test-output"></div>
+    </div>
+    
+    <script>
+        // AnimationManager class (minimal version for testing)
+        class AnimationManager {
+            constructor(panels) {
+                this.stackPanel = panels.stackPanel;
+                this.previousCallStack = [];
+            }
+            
+            updateStackFrames(callStack) {
+                if (!this.stackPanel) {
+                    console.warn('Stack panel not available for update');
+                    return;
+                }
+                
+                const stackContent = this.stackPanel.querySelector('#stack-content');
+                if (!stackContent) {
+                    console.warn('Stack content element not found');
+                    return;
+                }
+                
+                // If no call stack or empty, show placeholder
+                if (!callStack || callStack.length === 0) {
+                    stackContent.innerHTML = `
+                        <div class="stack-placeholder">
+                            <div class="stack-empty-icon">📚</div>
+                            <p class="stack-empty-text">No stack frames yet</p>
+                            <p class="stack-empty-hint">Execute code to see function call stack</p>
+                        </div>
+                    `;
+                    this.previousCallStack = [];
+                    return;
+                }
+                
+                // Detect push/pop operations
+                const previousStack = this.previousCallStack || [];
+                let operation = 'none';
+                
+                if (callStack.length > previousStack.length) {
+                    operation = 'push';
+                } else if (callStack.length < previousStack.length) {
+                    operation = 'pop';
+                }
+                
+                // Build HTML for all stack frames
+                let html = '';
+                for (let i = 0; i < callStack.length; i++) {
+                    const frame = callStack[i];
+                    const isActive = i === callStack.length - 1;
+                    const activeClass = isActive ? 'active' : '';
+                    const animationClass = (operation === 'push' && i === callStack.length - 1) ? 'pushing' : '';
+                    
+                    // Format local variables
+                    let variablesHtml = '';
+                    if (frame.localVariables && frame.localVariables.size > 0) {
+                        for (const [varName, varValue] of frame.localVariables) {
+                            let displayValue = '';
+                            if (varValue === null) {
+                                displayValue = 'None';
+                            } else if (varValue === undefined) {
+                                displayValue = 'undefined';
+                            } else if (typeof varValue === 'string') {
+                                displayValue = `"${varValue}"`;
+                            } else if (typeof varValue === 'object') {
+                                try {
+                                    displayValue = JSON.stringify(varValue);
+                                } catch (e) {
+                                    displayValue = '[Object]';
+                                }
+                            } else {
+                                displayValue = String(varValue);
+                            }
+                            
+                            variablesHtml += `
+                                <div class="stack-frame-variable">
+                                    <span class="stack-frame-var-name">${varName}</span>
+                                    <span class="stack-frame-var-separator">=</span>
+                                    <span class="stack-frame-var-value">${displayValue}</span>
+                                </div>
+                            `;
+                        }
+                    } else {
+                        variablesHtml = `
+                            <div class="stack-frame-variable">
+                                <span class="stack-frame-var-value" style="color: rgba(201, 209, 217, 0.4);">No local variables</span>
+                            </div>
+                        `;
+                    }
+                    
+                    html += `
+                        <div class="stack-frame ${activeClass} ${animationClass}" data-frame-id="${frame.frameId}">
+                            <div class="stack-frame-header">
+                                <span class="stack-frame-function">${frame.functionName}()</span>
+                                <span class="stack-frame-id">#${frame.frameId}</span>
+                            </div>
+                            <div class="stack-frame-body">
+                                <div class="stack-frame-locals">
+                                    <div class="stack-frame-section-title">Local Variables</div>
+                                    ${variablesHtml}
+                                </div>
+                                <div class="stack-frame-return">
+                                    <span class="stack-frame-return-label">Return to:</span>
+                                    <span class="stack-frame-return-address">offset ${frame.returnAddress}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                stackContent.innerHTML = html;
+                
+                setTimeout(() => {
+                    const frames = stackContent.querySelectorAll('.stack-frame');
+                    frames.forEach(frame => {
+                        frame.classList.remove('pushing', 'popping');
+                    });
+                }, 300);
+                
+                this.previousCallStack = callStack.slice();
+            }
+        }
+        
+        // Global state
+        let animationManager;
+        let currentStack = [];
+        
+        // Initialize
+        window.addEventListener('load', () => {
+            const stackPanel = document.getElementById('stack-panel');
+            animationManager = new AnimationManager({ stackPanel });
+        });
+        
+        // Demo functions
+        function showEmptyStack() {
+            currentStack = [];
+            animationManager.updateStackFrames(currentStack);
+        }
+        
+        function showSingleFrame() {
+            currentStack = [
+                {
+                    frameId: 'frame-1',
+                    functionName: 'main',
+                    localVariables: new Map([
+                        ['x', 42],
+                        ['name', 'Alice']
+                    ]),
+                    returnAddress: 0,
+                    lineNumber: 1
+                }
+            ];
+            animationManager.updateStackFrames(currentStack);
+        }
+        
+        function pushFrame() {
+            const frameId = `frame-${currentStack.length + 1}`;
+            const functionNames = ['calculate', 'process', 'helper', 'validate', 'transform'];
+            const functionName = functionNames[currentStack.length % functionNames.length];
+            
+            currentStack.push({
+                frameId: frameId,
+                functionName: functionName,
+                localVariables: new Map([
+                    ['a', Math.floor(Math.random() * 100)],
+                    ['b', Math.floor(Math.random() * 100)]
+                ]),
+                returnAddress: currentStack.length * 10,
+                lineNumber: currentStack.length + 1
+            });
+            
+            animationManager.updateStackFrames(currentStack);
+        }
+        
+        function popFrame() {
+            if (currentStack.length > 0) {
+                currentStack.pop();
+                animationManager.updateStackFrames(currentStack);
+            }
+        }
+        
+        function showComplexStack() {
+            currentStack = [
+                {
+                    frameId: 'frame-1',
+                    functionName: 'main',
+                    localVariables: new Map([
+                        ['x', 10],
+                        ['y', 20],
+                        ['result', null]
+                    ]),
+                    returnAddress: 0,
+                    lineNumber: 1
+                },
+                {
+                    frameId: 'frame-2',
+                    functionName: 'fibonacci',
+                    localVariables: new Map([
+                        ['n', 5],
+                        ['a', 0],
+                        ['b', 1]
+                    ]),
+                    returnAddress: 15,
+                    lineNumber: 8
+                },
+                {
+                    frameId: 'frame-3',
+                    functionName: 'calculate',
+                    localVariables: new Map([
+                        ['data', [1, 2, 3]],
+                        ['sum', 6]
+                    ]),
+                    returnAddress: 25,
+                    lineNumber: 15
+                }
+            ];
+            animationManager.updateStackFrames(currentStack);
+        }
+        
+        // Test runner
+        function runTests() {
+            const output = document.getElementById('test-output');
+            output.textContent = 'Running tests...\n\n';
+            
+            // Capture console output
+            const originalLog = console.log;
+            const originalAssert = console.assert;
+            const originalError = console.error;
+            
+            console.log = (...args) => {
+                output.textContent += args.join(' ') + '\n';
+                originalLog.apply(console, args);
+            };
+            
+            console.assert = (condition, ...args) => {
+                if (!condition) {
+                    output.textContent += '✗ ASSERTION FAILED: ' + args.join(' ') + '\n';
+                }
+                originalAssert.apply(console, [condition, ...args]);
+            };
+            
+            console.error = (...args) => {
+                output.textContent += '✗ ERROR: ' + args.join(' ') + '\n';
+                originalError.apply(console, args);
+            };
+            
+            // Load and run verification tests
+            const script = document.createElement('script');
+            script.src = 'verify-task-8.2.js';
+            script.onload = () => {
+                setTimeout(() => {
+                    VerifyTask82.runAll();
+                    
+                    // Restore console
+                    console.log = originalLog;
+                    console.assert = originalAssert;
+                    console.error = originalError;
+                }, 100);
+            };
+            document.head.appendChild(script);
+        }
+    </script>
+</body>
+</html>

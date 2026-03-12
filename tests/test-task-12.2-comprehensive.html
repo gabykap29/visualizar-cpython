@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task 12.2 Comprehensive Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            padding: 20px;
+            margin: 0;
+        }
+        
+        h1 {
+            color: #58a6ff;
+            border-bottom: 2px solid #58a6ff;
+            padding-bottom: 10px;
+        }
+        
+        .test-section {
+            background-color: #161b22;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .test-result.pass {
+            background-color: rgba(63, 185, 80, 0.15);
+            border-left: 4px solid #3fb950;
+        }
+        
+        .test-result.fail {
+            background-color: rgba(248, 81, 73, 0.15);
+            border-left: 4px solid #f85149;
+        }
+        
+        .summary {
+            background-color: #0d1117;
+            border: 2px solid #58a6ff;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .summary h2 {
+            color: #58a6ff;
+            margin: 0 0 10px 0;
+        }
+        
+        .summary .stats {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        .summary .stats.pass {
+            color: #3fb950;
+        }
+        
+        .summary .stats.fail {
+            color: #f85149;
+        }
+    </style>
+</head>
+<body>
+    <h1>Task 12.2 Comprehensive Test: ViewController Implementation</h1>
+    
+    <div id="summary" class="summary">
+        <h2>Test Summary</h2>
+        <div class="stats">Running tests...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test Results</h2>
+        <div id="test-results"></div>
+    </div>
+    
+    <!-- Load required scripts -->
+    <script src="../src/scripts/data-models.js"></script>
+    <script src="../src/scripts/state-store.js"></script>
+    <script src="../src/scripts/view-controller.js"></script>
+    
+    <script>
+        const testResults = document.getElementById('test-results');
+        const summary = document.getElementById('summary');
+        let passCount = 0;
+        let failCount = 0;
+        
+        function logResult(message, passed, details = '') {
+            const div = document.createElement('div');
+            div.className = `test-result ${passed ? 'pass' : 'fail'}`;
+            div.innerHTML = (passed ? '✓ ' : '✗ ') + message;
+            if (details) {
+                div.innerHTML += '<br><small style="color: #8b949e; margin-left: 20px;">' + details + '</small>';
+            }
+            testResults.appendChild(div);
+            
+            if (passed) passCount++;
+            else failCount++;
+        }
+        
+        function updateSummary() {
+            const total = passCount + failCount;
+            const statsClass = failCount === 0 ? 'pass' : 'fail';
+            summary.innerHTML = `
+                <h2>Test Summary</h2>
+                <div class="stats ${statsClass}">
+                    ${passCount} / ${total} tests passed
+                    ${failCount > 0 ? `<br><span style="font-size: 16px;">(${failCount} failed)</span>` : ''}
+                </div>
+            `;
+        }
+        
+        // Create mock execution states
+        const mockStates = [
+            { stepNumber: 0, lineNumber: 1, pipelineStage: 'source', instructionPointer: 0, bytecode: [], callStack: [], heap: [], gilStatus: { state: 'ACQUIRED', threadId: 1 }, explanation: 'Initial' },
+            { stepNumber: 1, lineNumber: 2, pipelineStage: 'tokenizer', instructionPointer: 2, bytecode: [], callStack: [], heap: [], gilStatus: { state: 'ACQUIRED', threadId: 1 }, explanation: 'Tokenizing' },
+            { stepNumber: 2, lineNumber: 3, pipelineStage: 'parser', instructionPointer: 4, bytecode: [], callStack: [], heap: [], gilStatus: { state: 'ACQUIRED', threadId: 1 }, explanation: 'Parsing' },
+            { stepNumber: 3, lineNumber: 4, pipelineStage: 'compiler', instructionPointer: 6, bytecode: [], callStack: [], heap: [], gilStatus: { state: 'ACQUIRED', threadId: 1 }, explanation: 'Compiling' },
+            { stepNumber: 4, lineNumber: 5, pipelineStage: 'pvm', instructionPointer: 8, bytecode: [], callStack: [], heap: [], gilStatus: { state: 'ACQUIRED', threadId: 1 }, explanation: 'Executing' }
+        ];
+        
+        // Create mock AnimationManager
+        let updateAllCallCount = 0;
+        let lastUpdateState = null;
+        const mockAnimationManager = {
+            updateAll: function(state) {
+                updateAllCallCount++;
+                lastUpdateState = state;
+            }
+        };
+        
+        // Test 1: ViewController class exists
+        try {
+            if (typeof ViewController === 'undefined') {
+                throw new Error('ViewController class not defined');
+            }
+            logResult('ViewController class exists', true);
+        } catch (error) {
+            logResult('ViewController class existence', false, error.message);
+        }
+        
+        // Test 2: StateStore class exists
+        try {
+            if (typeof StateStore === 'undefined') {
+                throw new Error('StateStore class not defined');
+            }
+            logResult('StateStore class exists', true);
+        } catch (error) {
+            logResult('StateStore class existence', false, error.message);
+        }
+        
+        // Test 3: Create StateStore and load states
+        let stateStore;
+        try {
+            stateStore = new StateStore();
+            stateStore.setStates(mockStates);
+            if (stateStore.states.length !== 5) {
+                throw new Error(`Expected 5 states, got ${stateStore.states.length}`);
+            }
+            if (stateStore.currentIndex !== 0) {
+                throw new Error(`Expected currentIndex 0, got ${stateStore.currentIndex}`);
+            }
+            logResult('StateStore created and initialized', true, `5 states loaded, currentIndex = 0`);
+        } catch (error) {
+            logResult('StateStore initialization', false, error.message);
+        }
+        
+        // Test 4: Create ViewController
+        let viewController;
+        try {
+            viewController = new ViewController(stateStore, mockAnimationManager);
+            if (!viewController.stateStore) throw new Error('stateStore not set');
+            if (!viewController.animationManager) throw new Error('animationManager not set');
+            logResult('ViewController created successfully', true, 'stateStore and animationManager connected');
+        } catch (error) {
+            logResult('ViewController creation', false, error.message);
+        }
+        
+        // Test 5: ViewController has required properties
+        try {
+            if (typeof viewController.isPlaying !== 'boolean') throw new Error('isPlaying not initialized');
+            if (typeof viewController.currentSpeed !== 'number') throw new Error('currentSpeed not initialized');
+            if (viewController.currentSpeed !== 1.0) throw new Error(`Expected default speed 1.0, got ${viewController.currentSpeed}`);
+            logResult('ViewController properties initialized', true, `isPlaying = ${viewController.isPlaying}, currentSpeed = ${viewController.currentSpeed}`);
+        } catch (error) {
+            logResult('ViewController properties', false, error.message);
+        }
+        
+        // Test 6: ViewController has required methods
+        try {
+            const methods = ['onStepForward', 'onStepBack', 'onReset', 'startAutoPlay', 'stopAutoPlay', 'updateButtonStates', 'connectEventHandlers', 'updateSpeedDisplay'];
+            for (const method of methods) {
+                if (typeof viewController[method] !== 'function') {
+                    throw new Error(`Method ${method} not found or not a function`);
+                }
+            }
+            logResult('ViewController has all required methods', true, `${methods.length} methods verified`);
+        } catch (error) {
+            logResult('ViewController methods', false, error.message);
+        }
+        
+        // Test 7: onStepForward advances state
+        try {
+            updateAllCallCount = 0;
+            const initialIndex = stateStore.currentIndex;
+            viewController.onStepForward();
+            
+            if (stateStore.currentIndex !== initialIndex + 1) {
+                throw new Error(`Expected index ${initialIndex + 1}, got ${stateStore.currentIndex}`);
+            }
+            if (updateAllCallCount !== 1) {
+                throw new Error(`Expected updateAll to be called once, called ${updateAllCallCount} times`);
+            }
+            if (lastUpdateState.stepNumber !== 1) {
+                throw new Error(`Expected state stepNumber 1, got ${lastUpdateState.stepNumber}`);
+            }
+            logResult('onStepForward advances state correctly', true, `Index: 0 → 1, updateAll called, state updated`);
+        } catch (error) {
+            logResult('onStepForward functionality', false, error.message);
+        }
+        
+        // Test 8: onStepBack reverses state
+        try {
+            updateAllCallCount = 0;
+            const initialIndex = stateStore.currentIndex;
+            viewController.onStepBack();
+            
+            if (stateStore.currentIndex !== initialIndex - 1) {
+                throw new Error(`Expected index ${initialIndex - 1}, got ${stateStore.currentIndex}`);
+            }
+            if (updateAllCallCount !== 1) {
+                throw new Error(`Expected updateAll to be called once, called ${updateAllCallCount} times`);
+            }
+            if (lastUpdateState.stepNumber !== 0) {
+                throw new Error(`Expected state stepNumber 0, got ${lastUpdateState.stepNumber}`);
+            }
+            logResult('onStepBack reverses state correctly', true, `Index: 1 → 0, updateAll called, state updated`);
+        } catch (error) {
+            logResult('onStepBack functionality', false, error.message);
+        }
+        
+        // Test 9: Multiple step forwards
+        try {
+            updateAllCallCount = 0;
+            viewController.onStepForward(); // 0 → 1
+            viewController.onStepForward(); // 1 → 2
+            viewController.onStepForward(); // 2 → 3
+            
+            if (stateStore.currentIndex !== 3) {
+                throw new Error(`Expected index 3, got ${stateStore.currentIndex}`);
+            }
+            if (updateAllCallCount !== 3) {
+                throw new Error(`Expected updateAll called 3 times, called ${updateAllCallCount} times`);
+            }
+            logResult('Multiple step forwards work correctly', true, `Index: 0 → 3, updateAll called 3 times`);
+        } catch (error) {
+            logResult('Multiple step forwards', false, error.message);
+        }
+        
+        // Test 10: onReset returns to initial state
+        try {
+            updateAllCallCount = 0;
+            viewController.onReset();
+            
+            if (stateStore.currentIndex !== 0) {
+                throw new Error(`Expected index 0, got ${stateStore.currentIndex}`);
+            }
+            if (updateAllCallCount !== 1) {
+                throw new Error(`Expected updateAll to be called once, called ${updateAllCallCount} times`);
+            }
+            if (lastUpdateState.stepNumber !== 0) {
+                throw new Error(`Expected state stepNumber 0, got ${lastUpdateState.stepNumber}`);
+            }
+            logResult('onReset returns to initial state', true, `Index: 3 → 0, updateAll called, state updated`);
+        } catch (error) {
+            logResult('onReset functionality', false, error.message);
+        }
+        
+        // Test 11: Button states at beginning
+        try {
+            stateStore.currentIndex = 0;
+            viewController.updateButtonStates();
+            
+            if (viewController.btnStepBack && !viewController.btnStepBack.disabled) {
+                throw new Error('Step Back should be disabled at beginning');
+            }
+            if (viewController.btnStepForward && viewController.btnStepForward.disabled) {
+                throw new Error('Step Forward should be enabled at beginning');
+            }
+            if (viewController.btnReset && !viewController.btnReset.disabled) {
+                throw new Error('Reset should be disabled at beginning');
+            }
+            logResult('Button states correct at beginning', true, 'Step Back disabled, Step Forward enabled, Reset disabled');
+        } catch (error) {
+            logResult('Button states at beginning', false, error.message);
+        }
+        
+        // Test 12: Button states at end
+        try {
+            stateStore.currentIndex = mockStates.length - 1;
+            viewController.updateButtonStates();
+            
+            if (viewController.btnStepBack && viewController.btnStepBack.disabled) {
+                throw new Error('Step Back should be enabled at end');
+            }
+            if (viewController.btnStepForward && !viewController.btnStepForward.disabled) {
+                throw new Error('Step Forward should be disabled at end');
+            }
+            if (viewController.btnReset && viewController.btnReset.disabled) {
+                throw new Error('Reset should be enabled at end');
+            }
+            logResult('Button states correct at end', true, 'Step Back enabled, Step Forward disabled, Reset enabled');
+        } catch (error) {
+            logResult('Button states at end', false, error.message);
+        }
+        
+        // Test 13: Button states in middle
+        try {
+            stateStore.currentIndex = 2;
+            viewController.updateButtonStates();
+            
+            if (viewController.btnStepBack && viewController.btnStepBack.disabled) {
+                throw new Error('Step Back should be enabled in middle');
+            }
+            if (viewController.btnStepForward && viewController.btnStepForward.disabled) {
+                throw new Error('Step Forward should be enabled in middle');
+            }
+            if (viewController.btnReset && viewController.btnReset.disabled) {
+                throw new Error('Reset should be enabled in middle');
+            }
+            logResult('Button states correct in middle', true, 'All navigation buttons enabled');
+        } catch (error) {
+            logResult('Button states in middle', false, error.message);
+        }
+        
+        // Test 14: Speed control
+        try {
+            viewController.currentSpeed = 2.0;
+            if (viewController.currentSpeed !== 2.0) {
+                throw new Error(`Expected speed 2.0, got ${viewController.currentSpeed}`);
+            }
+            
+            viewController.currentSpeed = 0.5;
+            if (viewController.currentSpeed !== 0.5) {
+                throw new Error(`Expected speed 0.5, got ${viewController.currentSpeed}`);
+            }
+            
+            viewController.currentSpeed = 3.0;
+            if (viewController.currentSpeed !== 3.0) {
+                throw new Error(`Expected speed 3.0, got ${viewController.currentSpeed}`);
+            }
+            
+            viewController.currentSpeed = 1.0; // Reset to default
+            logResult('Speed control works correctly', true, 'Tested speeds: 0.5x, 2.0x, 3.0x');
+        } catch (error) {
+            logResult('Speed control', false, error.message);
+        }
+        
+        // Test 15: startAutoPlay
+        try {
+            stateStore.currentIndex = 0;
+            viewController.startAutoPlay();
+            
+            if (!viewController.isPlaying) {
+                throw new Error('isPlaying should be true after startAutoPlay');
+            }
+            if (!viewController.autoPlayInterval) {
+                throw new Error('autoPlayInterval should be set');
+            }
+            if (viewController.btnAutoPlay && !viewController.btnAutoPlay.classList.contains('playing')) {
+                throw new Error('Auto-play button should have .playing class');
+            }
+            
+            logResult('startAutoPlay works correctly', true, 'isPlaying = true, interval set, button class added');
+            
+            // Clean up
+            viewController.stopAutoPlay();
+        } catch (error) {
+            logResult('startAutoPlay functionality', false, error.message);
+            viewController.stopAutoPlay(); // Clean up
+        }
+        
+        // Test 16: stopAutoPlay
+        try {
+            stateStore.currentIndex = 0;
+            viewController.startAutoPlay();
+            viewController.stopAutoPlay();
+            
+            if (viewController.isPlaying) {
+                throw new Error('isPlaying should be false after stopAutoPlay');
+            }
+            if (viewController.autoPlayInterval) {
+                throw new Error('autoPlayInterval should be null');
+            }
+            if (viewController.btnAutoPlay && viewController.btnAutoPlay.classList.contains('playing')) {
+                throw new Error('Auto-play button should not have .playing class');
+            }
+            
+            logResult('stopAutoPlay works correctly', true, 'isPlaying = false, interval cleared, button class removed');
+        } catch (error) {
+            logResult('stopAutoPlay functionality', false, error.message);
+        }
+        
+        // Test 17: Auto-play advances states
+        try {
+            stateStore.currentIndex = 0;
+            updateAllCallCount = 0;
+            
+            viewController.startAutoPlay();
+            
+            // Wait for auto-play to advance a few times
+            await new Promise(resolve => setTimeout(resolve, 2500)); // Wait 2.5 seconds at 1.0x speed
+            
+            viewController.stopAutoPlay();
+            
+            if (stateStore.currentIndex < 2) {
+                throw new Error(`Expected index >= 2, got ${stateStore.currentIndex}`);
+            }
+            if (updateAllCallCount < 2) {
+                throw new Error(`Expected updateAll called >= 2 times, called ${updateAllCallCount} times`);
+            }
+            
+            logResult('Auto-play advances states automatically', true, `Advanced from 0 to ${stateStore.currentIndex}, updateAll called ${updateAllCallCount} times`);
+        } catch (error) {
+            logResult('Auto-play state advancement', false, error.message);
+            viewController.stopAutoPlay(); // Clean up
+        }
+        
+        // Test 18: Auto-play stops at end
+        try {
+            stateStore.currentIndex = mockStates.length - 2; // One before end
+            viewController.startAutoPlay();
+            
+            // Wait for auto-play to reach the end
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            
+            if (viewController.isPlaying) {
+                throw new Error('Auto-play should stop at end');
+            }
+            if (stateStore.currentIndex !== mockStates.length - 1) {
+                throw new Error(`Expected to be at end (index ${mockStates.length - 1}), got ${stateStore.currentIndex}`);
+            }
+            
+            logResult('Auto-play stops at end automatically', true, `Stopped at index ${stateStore.currentIndex}`);
+        } catch (error) {
+            logResult('Auto-play end behavior', false, error.message);
+            viewController.stopAutoPlay(); // Clean up
+        }
+        
+        // Update summary
+        updateSummary();
+        
+        console.log(`\nTest Summary: ${passCount} passed, ${failCount} failed`);
+    </script>
+</body>
+</html>

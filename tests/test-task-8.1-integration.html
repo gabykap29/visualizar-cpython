@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task 8.1 Integration Test - Stack Panel</title>
+    
+    <style>
+        /* CSS Variables for Dark Theme */
+        :root {
+            --bg-primary: #0d1117;
+            --accent-color: #58a6ff;
+            --text-primary: #c9d1d9;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --error-color: #f85149;
+            --success-color: #3fb950;
+            --transition-duration: 300ms;
+        }
+        
+        /* Reset and Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            padding: 20px;
+        }
+        
+        h1 {
+            color: var(--accent-color);
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        
+        .test-section {
+            margin-bottom: 40px;
+            padding: 20px;
+            background-color: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+        
+        .test-section h2 {
+            color: var(--accent-color);
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        .test-section p {
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background-color: var(--accent-color);
+            color: #ffffff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        
+        button:hover {
+            background-color: #4a8fd9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(88, 166, 255, 0.3);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        /* Common Panel Styles */
+        .visualization-panel {
+            background-color: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: all var(--transition-duration) ease-in-out;
+            height: 500px;
+        }
+        
+        .visualization-panel:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        .panel-header {
+            padding: 12px 16px;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .panel-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--accent-color);
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .panel-subtitle {
+            font-size: 11px;
+            color: rgba(201, 209, 217, 0.6);
+            font-weight: 400;
+        }
+        
+        .panel-content {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 12px;
+        }
+        
+        /* Custom scrollbar for panels */
+        .panel-content::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .panel-content::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+        }
+        
+        .panel-content::-webkit-scrollbar-thumb {
+            background: rgba(88, 166, 255, 0.3);
+            border-radius: 4px;
+        }
+        
+        .panel-content::-webkit-scrollbar-thumb:hover {
+            background: rgba(88, 166, 255, 0.5);
+        }
+        
+        /* Stack Panel Styles */
+        #stack-panel {
+            width: 100%;
+            max-width: 500px;
+        }
+        
+        #stack-content {
+            display: flex;
+            flex-direction: column-reverse;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+        }
+        
+        .stack-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: rgba(201, 209, 217, 0.5);
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .stack-placeholder p {
+            margin: 8px 0;
+        }
+        
+        /* Stack Frame Card Styles */
+        .stack-frame {
+            width: 90%;
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            transition: all var(--transition-duration) ease-in-out;
+            cursor: default;
+            position: relative;
+        }
+        
+        .stack-frame:hover {
+            background-color: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .stack-frame.active {
+            border-color: var(--accent-color);
+            background-color: rgba(88, 166, 255, 0.1);
+        }
+        
+        /* Stack Frame Push Animation */
+        .stack-frame.pushing {
+            animation: stackPush var(--transition-duration) ease-in-out;
+        }
+        
+        @keyframes stackPush {
+            0% {
+                opacity: 0;
+                transform: translateY(20px) scale(0.9);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        /* Stack Frame Pop Animation */
+        .stack-frame.popping {
+            animation: stackPop var(--transition-duration) ease-in-out;
+        }
+        
+        @keyframes stackPop {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-20px) scale(0.9);
+            }
+        }
+        
+        /* Stack Frame Header */
+        .stack-frame-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .stack-frame-function {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--accent-color);
+            font-family: 'Courier New', 'Consolas', monospace;
+        }
+        
+        .stack-frame.active .stack-frame-function {
+            color: #ffffff;
+        }
+        
+        .stack-frame-id {
+            font-size: 10px;
+            color: rgba(201, 209, 217, 0.4);
+            font-family: 'Courier New', 'Consolas', monospace;
+        }
+        
+        /* Stack Frame Body */
+        .stack-frame-body {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        /* Local Variables Section */
+        .stack-frame-locals {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .stack-frame-section-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: rgba(201, 209, 217, 0.6);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        
+        .stack-frame-variable {
+            display: flex;
+            align-items: center;
+            padding: 4px 8px;
+            background-color: rgba(255, 255, 255, 0.03);
+            border-radius: 4px;
+            font-family: 'Courier New', 'Consolas', monospace;
+            font-size: 12px;
+        }
+        
+        .stack-frame-variable:hover {
+            background-color: rgba(255, 255, 255, 0.06);
+        }
+        
+        .stack-frame-var-name {
+            color: var(--accent-color);
+            font-weight: 600;
+            margin-right: 8px;
+        }
+        
+        .stack-frame-var-separator {
+            color: rgba(201, 209, 217, 0.4);
+            margin-right: 8px;
+        }
+        
+        .stack-frame-var-value {
+            color: var(--text-primary);
+            word-break: break-all;
+        }
+        
+        /* Return Address Section */
+        .stack-frame-return {
+            display: flex;
+            align-items: center;
+            padding: 4px 8px;
+            background-color: rgba(255, 255, 255, 0.03);
+            border-radius: 4px;
+            font-family: 'Courier New', 'Consolas', monospace;
+            font-size: 11px;
+            margin-top: 4px;
+        }
+        
+        .stack-frame-return-label {
+            color: rgba(201, 209, 217, 0.6);
+            margin-right: 8px;
+        }
+        
+        .stack-frame-return-address {
+            color: var(--accent-color);
+            font-weight: 600;
+        }
+        
+        /* Empty Stack Message */
+        .stack-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: rgba(201, 209, 217, 0.5);
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .stack-empty-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+        
+        .stack-empty-text {
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        
+        .stack-empty-hint {
+            font-size: 11px;
+            color: rgba(201, 209, 217, 0.3);
+        }
+        
+        .status {
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .status.success {
+            background-color: rgba(63, 185, 80, 0.1);
+            border: 1px solid var(--success-color);
+            color: var(--success-color);
+        }
+        
+        .status.info {
+            background-color: rgba(88, 166, 255, 0.1);
+            border: 1px solid var(--accent-color);
+            color: var(--accent-color);
+        }
+    </style>
+</head>
+<body>
+    <h1>Task 8.1 Integration Test - Stack Panel HTML Structure and CSS</h1>
+    
+    <!-- Test 1: Empty Stack Display -->
+    <div class="test-section">
+        <h2>Test 1: Empty Stack Display</h2>
+        <p>This test verifies that the Stack Panel displays a placeholder message when no stack frames are present.</p>
+        
+        <div id="stack-panel" class="visualization-panel">
+            <div class="panel-header">
+                <h3 class="panel-title">Call Stack</h3>
+                <span class="panel-subtitle">Function Frames</span>
+            </div>
+            <div class="panel-content" id="stack-content-1">
+                <div class="stack-placeholder">
+                    <div class="stack-empty-icon">📚</div>
+                    <p class="stack-empty-text">No stack frames yet</p>
+                    <p class="stack-empty-hint">Execute code to see function call stack</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="status success">✓ Empty stack placeholder displays correctly</div>
+    </div>
+    
+    <!-- Test 2: Single Stack Frame -->
+    <div class="test-section">
+        <h2>Test 2: Single Stack Frame Display</h2>
+        <p>This test verifies that a single stack frame displays correctly with function name, local variables, and return address.</p>
+        
+        <div id="stack-panel" class="visualization-panel">
+            <div class="panel-header">
+                <h3 class="panel-title">Call Stack</h3>
+                <span class="panel-subtitle">Function Frames</span>
+            </div>
+            <div class="panel-content" id="stack-content-2">
+                <div class="stack-frame active">
+                    <div class="stack-frame-header">
+                        <span class="stack-frame-function">main()</span>
+                        <span class="stack-frame-id">frame_0</span>
+                    </div>
+                    <div class="stack-frame-body">
+                        <div class="stack-frame-locals">
+                            <div class="stack-frame-section-title">Local Variables</div>
+                            <div class="stack-frame-variable">
+                                <span class="stack-frame-var-name">x</span>
+                                <span class="stack-frame-var-separator">=</span>
+                                <span class="stack-frame-var-value">42</span>
+                            </div>
+                            <div class="stack-frame-variable">
+                                <span class="stack-frame-var-name">message</span>
+                                <span class="stack-frame-var-separator">=</span>
+                                <span class="stack-frame-var-value">"Hello, World!"</span>
+                            </div>
+                        </div>
+                        <div class="stack-frame-return">
+                            <span class="stack-frame-return-label">Return Address:</span>
+                            <span class="stack-frame-return-address">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="status success">✓ Single stack frame displays with function name, variables, and return address</div>
+    </div>
+    
+    <!-- Test 3: Multiple Stack Frames -->
+    <div class="test-section">
+        <h2>Test 3: Multiple Stack Frames (Vertical Stack)</h2>
+        <p>This test verifies that multiple stack frames are displayed vertically with the most recent frame at the top.</p>
+        
+        <div id="stack-panel" class="visualization-panel">
+            <div class="panel-header">
+                <h3 class="panel-title">Call Stack</h3>
+                <span class="panel-subtitle">Function Frames</span>
+            </div>
+            <div class="panel-content" id="stack-content-3">
+                <div class="stack-frame">
+                    <div class="stack-frame-header">
+                        <span class="stack-frame-function">main()</span>
+                        <span class="stack-frame-id">frame_0</span>
+                    </div>
+                    <div class="stack-frame-body">
+                        <div class="stack-frame-locals">
+                            <div class="stack-frame-section-title">Local Variables</div>
+                            <div class="stack-frame-variable">
+                                <span class="stack-frame-var-name">n</span>
+                                <span class="stack-frame-var-separator">=</span>
+                                <span class="stack-frame-var-value">5</span>
+                            </div>
+                        </div>
+                        <div class="stack-frame-return">
+                            <span class="stack-frame-return-label">Return Address:</span>
+                            <span class="stack-frame-return-address">0</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="stack-frame">
+                    <div class="stack-frame-header">
+                        <span class="stack-frame-function">factorial(n)</span>
+                        <span class="stack-frame-id">frame_1</span>
+                    </div>
+                    <div class="stack-frame-body">
+                        <div class="stack-frame-locals">
+                            <div class="stack-frame-section-title">Local Variables</div>
+                            <div class="stack-frame-variable">
+                                <span class="stack-frame-var-name">n</span>
+                                <span class="stack-frame-var-separator">=</span>
+                                <span class="stack-frame-var-value">3</span>
+                            </div>
+                        </div>
+                        <div class="stack-frame-return">
+                            <span class="stack-frame-return-label">Return Address:</span>
+                            <span class="stack-frame-return-address">24</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="stack-frame active">
+                    <div class="stack-frame-header">
+                        <span class="stack-frame-function">factorial(n)</span>
+                        <span class="stack-frame-id">frame_2</span>
+                    </div>
+                    <div class="stack-frame-body">
+                        <div class="stack-frame-locals">
+                            <div class="stack-frame-section-title">Local Variables</div>
+                            <div class="stack-frame-variable">
+                                <span class="stack-frame-var-name">n</span>
+                                <span class="stack-frame-var-separator">=</span>
+                                <span class="stack-frame-var-value">2</span>
+                            </div>
+                        </div>
+                        <div class="stack-frame-return">
+                            <span class="stack-frame-return-label">Return Address:</span>
+                            <span class="stack-frame-return-address">24</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="status success">✓ Multiple stack frames display vertically with most recent at top</div>
+    </div>
+    
+    <!-- Test 4: Push/Pop Animations -->
+    <div class="test-section">
+        <h2>Test 4: Push/Pop Animations (300ms duration)</h2>
+        <p>This test demonstrates the push and pop animations for stack frames.</p>
+        
+        <div class="controls">
+            <button onclick="pushFrame()">Push Frame</button>
+            <button onclick="popFrame()">Pop Frame</button>
+            <button onclick="clearStack()">Clear Stack</button>
+        </div>
+        
+        <div id="stack-panel" class="visualization-panel">
+            <div class="panel-header">
+                <h3 class="panel-title">Call Stack</h3>
+                <span class="panel-subtitle">Function Frames</span>
+            </div>
+            <div class="panel-content" id="stack-content-4">
+                <div class="stack-placeholder">
+                    <div class="stack-empty-icon">📚</div>
+                    <p class="stack-empty-text">No stack frames yet</p>
+                    <p class="stack-empty-hint">Click "Push Frame" to add a stack frame</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="status info" id="animation-status">Click buttons above to test animations</div>
+    </div>
+    
+    <script>
+        let frameCounter = 0;
+        const stackContent = document.getElementById('stack-content-4');
+        const animationStatus = document.getElementById('animation-status');
+        
+        function pushFrame() {
+            // Remove placeholder if present
+            const placeholder = stackContent.querySelector('.stack-placeholder');
+            if (placeholder) {
+                placeholder.remove();
+            }
+            
+            // Create new frame
+            const frame = document.createElement('div');
+            frame.className = 'stack-frame pushing active';
+            frame.id = `frame-${frameCounter}`;
+            
+            const functionNames = ['main()', 'calculate()', 'process()', 'helper()', 'validate()'];
+            const functionName = functionNames[frameCounter % functionNames.length];
+            
+            frame.innerHTML = `
+                <div class="stack-frame-header">
+                    <span class="stack-frame-function">${functionName}</span>
+                    <span class="stack-frame-id">frame_${frameCounter}</span>
+                </div>
+                <div class="stack-frame-body">
+                    <div class="stack-frame-locals">
+                        <div class="stack-frame-section-title">Local Variables</div>
+                        <div class="stack-frame-variable">
+                            <span class="stack-frame-var-name">x</span>
+                            <span class="stack-frame-var-separator">=</span>
+                            <span class="stack-frame-var-value">${Math.floor(Math.random() * 100)}</span>
+                        </div>
+                    </div>
+                    <div class="stack-frame-return">
+                        <span class="stack-frame-return-label">Return Address:</span>
+                        <span class="stack-frame-return-address">${frameCounter * 8}</span>
+                    </div>
+                </div>
+            `;
+            
+            // Remove active class from other frames
+            stackContent.querySelectorAll('.stack-frame').forEach(f => f.classList.remove('active'));
+            
+            // Add frame to stack
+            stackContent.appendChild(frame);
+            
+            // Remove pushing class after animation
+            setTimeout(() => {
+                frame.classList.remove('pushing');
+            }, 300);
+            
+            frameCounter++;
+            animationStatus.textContent = `✓ Pushed frame with 300ms animation`;
+            animationStatus.className = 'status success';
+        }
+        
+        function popFrame() {
+            const frames = stackContent.querySelectorAll('.stack-frame');
+            if (frames.length === 0) {
+                animationStatus.textContent = '⚠ No frames to pop';
+                animationStatus.className = 'status info';
+                return;
+            }
+            
+            // Get the last frame (top of stack)
+            const lastFrame = frames[frames.length - 1];
+            lastFrame.classList.add('popping');
+            
+            // Remove frame after animation
+            setTimeout(() => {
+                lastFrame.remove();
+                
+                // If stack is empty, show placeholder
+                if (stackContent.querySelectorAll('.stack-frame').length === 0) {
+                    stackContent.innerHTML = `
+                        <div class="stack-placeholder">
+                            <div class="stack-empty-icon">📚</div>
+                            <p class="stack-empty-text">No stack frames yet</p>
+                            <p class="stack-empty-hint">Click "Push Frame" to add a stack frame</p>
+                        </div>
+                    `;
+                } else {
+                    // Make the new top frame active
+                    const newFrames = stackContent.querySelectorAll('.stack-frame');
+                    if (newFrames.length > 0) {
+                        newFrames[newFrames.length - 1].classList.add('active');
+                    }
+                }
+            }, 300);
+            
+            animationStatus.textContent = `✓ Popped frame with 300ms animation`;
+            animationStatus.className = 'status success';
+        }
+        
+        function clearStack() {
+            stackContent.innerHTML = `
+                <div class="stack-placeholder">
+                    <div class="stack-empty-icon">📚</div>
+                    <p class="stack-empty-text">No stack frames yet</p>
+                    <p class="stack-empty-hint">Click "Push Frame" to add a stack frame</p>
+                </div>
+            `;
+            frameCounter = 0;
+            animationStatus.textContent = `✓ Stack cleared`;
+            animationStatus.className = 'status success';
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task 8.2 Comprehensive Test</title>
+    <style>
+        :root {
+            --background-color: #0d1117;
+            --text-primary: #c9d1d9;
+            --accent-color: #58a6ff;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --transition-duration: 300ms;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-primary);
+            padding: 20px;
+            margin: 0;
+        }
+        
+        h1, h2 {
+            color: var(--accent-color);
+        }
+        
+        .test-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .test-panel {
+            background-color: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+        }
+        
+        .test-panel h3 {
+            margin-top: 0;
+            color: var(--accent-color);
+        }
+        
+        button {
+            background-color: var(--accent-color);
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background-color: #4a8fd8;
+        }
+        
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        
+        .status.pass {
+            background-color: rgba(63, 185, 80, 0.2);
+            border: 1px solid #3fb950;
+            color: #3fb950;
+        }
+        
+        .status.fail {
+            background-color: rgba(248, 81, 73, 0.2);
+            border: 1px solid #f85149;
+            color: #f85149;
+        }
+        
+        /* Stack Panel Styles */
+        #stack-panel {
+            width: 100%;
+            background-color: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            min-height: 300px;
+        }
+        
+        #stack-content {
+            display: flex;
+            flex-direction: column-reverse;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            min-height: 250px;
+        }
+        
+        .stack-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: rgba(201, 209, 217, 0.5);
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .stack-empty-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+        
+        .stack-empty-text {
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        
+        .stack-empty-hint {
+            font-size: 11px;
+            color: rgba(201, 209, 217, 0.3);
+        }
+        
+        .stack-frame {
+            width: 90%;
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            transition: all var(--transition-duration) ease-in-out;
+            cursor: default;
+            position: relative;
+        }
+        
+        .stack-frame:hover {
+            background-color: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .stack-frame.active {
+            border-color: var(--accent-color);
+            background-color: rgba(88, 166, 255, 0.1);
+        }
+        
+        .stack-frame.pushing {
+            animation: stackPush var(--transition-duration) ease-in-out;
+        }
+        
+        @keyframes stackPush {
+            0% {
+                opacity: 0;
+                transform: translateY(20px) scale(0.9);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        .stack-frame.popping {
+            animation: stackPop var(--transition-duration) ease-in-out;
+        }
+        
+        @keyframes stackPop {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-20px) scale(0.9);
+            }
+        }
+        
+        .stack-frame-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .stack-frame-function {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--accent-color);
+            font-family: 'Courier New', 'Consolas', monospace;
+        }
+        
+        .stack-frame.active .stack-frame-function {
+            color: #ffffff;
+        }
+        
+        .stack-frame-id {
+            font-size: 10px;
+            color: rgba(201, 209, 217, 0.4);
+            font-family: 'Courier New', 'Consolas', monospace;
+        }
+        
+        .stack-frame-body {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .stack-frame-locals {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .stack-frame-section-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: rgba(201, 209, 217, 0.6);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        
+        .stack-frame-variable {
+            display: flex;
+            align-items: center;
+            padding: 4px 8px;
+            background-color: rgba(255, 255, 255, 0.03);
+            border-radius: 4px;
+            font-family: 'Courier New', 'Consolas', monospace;
+            font-size: 12px;
+        }
+        
+        .stack-frame-variable:hover {
+            background-color: rgba(255, 255, 255, 0.06);
+        }
+        
+        .stack-frame-var-name {
+            color: var(--accent-color);
+            font-weight: 600;
+            margin-right: 8px;
+        }
+        
+        .stack-frame-var-separator {
+            color: rgba(201, 209, 217, 0.4);
+            margin-right: 8px;
+        }
+        
+        .stack-frame-var-value {
+            color: var(--text-primary);
+            word-break: break-all;
+        }
+        
+        .stack-frame-return {
+            display: flex;
+            align-items: center;
+            padding: 4px 8px;
+            background-color: rgba(255, 255, 255, 0.03);
+            border-radius: 4px;
+            font-family: 'Courier New', 'Consolas', monospace;
+            font-size: 11px;
+            margin-top: 4px;
+        }
+        
+        .stack-frame-return-label {
+            color: rgba(201, 209, 217, 0.6);
+            margin-right: 8px;
+        }
+        
+        .stack-frame-return-address {
+            color: var(--accent-color);
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <h1>Task 8.2 Comprehensive Test Suite</h1>
+    <p>Testing Requirements 4.2, 4.3, 4.4, 4.5 for Stack Frame Rendering and Animations</p>
+    
+    <div class="test-grid">
+        <div class="test-panel">
+            <h3>Requirement 4.4: Display Completeness</h3>
+            <p>Each frame must show function name, local variables, and return address</p>
+            <button onclick="testRequirement44()">Test 4.4</button>
+            <div id="status-44"></div>
+        </div>
+        
+        <div class="test-panel">
+            <h3>Requirement 4.5: Most Recent at Top</h3>
+            <p>Most recent frame must be positioned at top and marked active</p>
+            <button onclick="testRequirement45()">Test 4.5</button>
+            <div id="status-45"></div>
+        </div>
+        
+        <div class="test-panel">
+            <h3>Requirement 4.2: Push Animation</h3>
+            <p>New frames must animate with 200-400ms transition</p>
+            <button onclick="testRequirement42()">Test 4.2</button>
+            <div id="status-42"></div>
+        </div>
+        
+        <div class="test-panel">
+            <h3>Edge Cases</h3>
+            <p>Empty stack, no variables, complex types</p>
+            <button onclick="testEdgeCases()">Test Edge Cases</button>
+            <div id="status-edge"></div>
+        </div>
+    </div>
+    
+    <div class="test-panel" style="margin-top: 20px;">
+        <h3>Visual Stack Panel</h3>
+        <div id="stack-panel">
+            <div id="stack-content">
+                <div class="stack-placeholder">
+                    <div class="stack-empty-icon">📚</div>
+                    <p class="stack-empty-text">No stack frames yet</p>
+                    <p class="stack-empty-hint">Run tests to see stack frames</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // AnimationManager implementation
+        class AnimationManager {
+            constructor(panels) {
+                this.stackPanel = panels.stackPanel;
+                this.previousCallStack = [];
+            }
+            
+            updateStackFrames(callStack) {
+                if (!this.stackPanel) {
+                    console.warn('Stack panel not available for update');
+                    return;
+                }
+                
+                const stackContent = this.stackPanel.querySelector('#stack-content');
+                if (!stackContent) {
+                    console.warn('Stack content element not found');
+                    return;
+                }
+                
+                if (!callStack || callStack.length === 0) {
+                    stackContent.innerHTML = `
+                        <div class="stack-placeholder">
+                            <div class="stack-empty-icon">📚</div>
+                            <p class="stack-empty-text">No stack frames yet</p>
+                            <p class="stack-empty-hint">Execute code to see function call stack</p>
+                        </div>
+                    `;
+                    this.previousCallStack = [];
+                    return;
+                }
+                
+                const previousStack = this.previousCallStack || [];
+                let operation = 'none';
+                
+                if (callStack.length > previousStack.length) {
+                    operation = 'push';
+                } else if (callStack.length < previousStack.length) {
+                    operation = 'pop';
+                }
+                
+                let html = '';
+                for (let i = 0; i < callStack.length; i++) {
+                    const frame = callStack[i];
+                    const isActive = i === callStack.length - 1;
+                    const activeClass = isActive ? 'active' : '';
+                    const animationClass = (operation === 'push' && i === callStack.length - 1) ? 'pushing' : '';
+                    
+                    let variablesHtml = '';
+                    if (frame.localVariables && frame.localVariables.size > 0) {
+                        for (const [varName, varValue] of frame.localVariables) {
+                            let displayValue = '';
+                            if (varValue === null) {
+                                displayValue = 'None';
+                            } else if (varValue === undefined) {
+                                displayValue = 'undefined';
+                            } else if (typeof varValue === 'string') {
+                                displayValue = `"${varValue}"`;
+                            } else if (typeof varValue === 'object') {
+                                try {
+                                    displayValue = JSON.stringify(varValue);
+                                } catch (e) {
+                                    displayValue = '[Object]';
+                                }
+                            } else {
+                                displayValue = String(varValue);
+                            }
+                            
+                            variablesHtml += `
+                                <div class="stack-frame-variable">
+                                    <span class="stack-frame-var-name">${varName}</span>
+                                    <span class="stack-frame-var-separator">=</span>
+                                    <span class="stack-frame-var-value">${displayValue}</span>
+                                </div>
+                            `;
+                        }
+                    } else {
+                        variablesHtml = `
+                            <div class="stack-frame-variable">
+                                <span class="stack-frame-var-value" style="color: rgba(201, 209, 217, 0.4);">No local variables</span>
+                            </div>
+                        `;
+                    }
+                    
+                    html += `
+                        <div class="stack-frame ${activeClass} ${animationClass}" data-frame-id="${frame.frameId}">
+                            <div class="stack-frame-header">
+                                <span class="stack-frame-function">${frame.functionName}()</span>
+                                <span class="stack-frame-id">#${frame.frameId}</span>
+                            </div>
+                            <div class="stack-frame-body">
+                                <div class="stack-frame-locals">
+                                    <div class="stack-frame-section-title">Local Variables</div>
+                                    ${variablesHtml}
+                                </div>
+                                <div class="stack-frame-return">
+                                    <span class="stack-frame-return-label">Return to:</span>
+                                    <span class="stack-frame-return-address">offset ${frame.returnAddress}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                stackContent.innerHTML = html;
+                
+                setTimeout(() => {
+                    const frames = stackContent.querySelectorAll('.stack-frame');
+                    frames.forEach(frame => {
+                        frame.classList.remove('pushing', 'popping');
+                    });
+                }, 300);
+                
+                this.previousCallStack = callStack.slice();
+            }
+        }
+        
+        // Initialize
+        let animationManager;
+        window.addEventListener('load', () => {
+            const stackPanel = document.getElementById('stack-panel');
+            animationManager = new AnimationManager({ stackPanel });
+        });
+        
+        // Test functions
+        function testRequirement44() {
+            const status = document.getElementById('status-44');
+            status.innerHTML = 'Testing...';
+            
+            const testStack = [{
+                frameId: 'test-1',
+                functionName: 'testFunction',
+                localVariables: new Map([['x', 10], ['y', 'hello']]),
+                returnAddress: 42,
+                lineNumber: 5
+            }];
+            
+            animationManager.updateStackFrames(testStack);
+            
+            setTimeout(() => {
+                const frame = document.querySelector('.stack-frame');
+                const hasFunction = frame.querySelector('.stack-frame-function').textContent === 'testFunction()';
+                const hasVariables = frame.querySelectorAll('.stack-frame-variable').length === 2;
+                const hasReturn = frame.querySelector('.stack-frame-return-address').textContent.includes('42');
+                
+                if (hasFunction && hasVariables && hasReturn) {
+                    status.innerHTML = '<div class="status pass">✓ PASS: All information displayed correctly</div>';
+                } else {
+                    status.innerHTML = '<div class="status fail">✗ FAIL: Missing required information</div>';
+                }
+            }, 100);
+        }
+        
+        function testRequirement45() {
+            const status = document.getElementById('status-45');
+            status.innerHTML = 'Testing...';
+            
+            const testStack = [
+                { frameId: '1', functionName: 'first', localVariables: new Map(), returnAddress: 0, lineNumber: 1 },
+                { frameId: '2', functionName: 'second', localVariables: new Map(), returnAddress: 10, lineNumber: 5 },
+                { frameId: '3', functionName: 'third', localVariables: new Map(), returnAddress: 20, lineNumber: 10 }
+            ];
+            
+            animationManager.updateStackFrames(testStack);
+            
+            setTimeout(() => {
+                const frames = document.querySelectorAll('.stack-frame');
+                const lastFrame = frames[frames.length - 1];
+                const isActive = lastFrame.classList.contains('active');
+                const isThird = lastFrame.querySelector('.stack-frame-function').textContent === 'third()';
+                
+                if (isActive && isThird) {
+                    status.innerHTML = '<div class="status pass">✓ PASS: Most recent frame at top and marked active</div>';
+                } else {
+                    status.innerHTML = '<div class="status fail">✗ FAIL: Most recent frame not properly positioned</div>';
+                }
+            }, 100);
+        }
+        
+        function testRequirement42() {
+            const status = document.getElementById('status-42');
+            status.innerHTML = 'Testing...';
+            
+            // Start with one frame
+            animationManager.updateStackFrames([
+                { frameId: '1', functionName: 'first', localVariables: new Map(), returnAddress: 0, lineNumber: 1 }
+            ]);
+            
+            setTimeout(() => {
+                // Push a new frame
+                animationManager.updateStackFrames([
+                    { frameId: '1', functionName: 'first', localVariables: new Map(), returnAddress: 0, lineNumber: 1 },
+                    { frameId: '2', functionName: 'second', localVariables: new Map(), returnAddress: 10, lineNumber: 5 }
+                ]);
+                
+                setTimeout(() => {
+                    const frames = document.querySelectorAll('.stack-frame');
+                    const newFrame = frames[frames.length - 1];
+                    const hasPushingClass = newFrame.classList.contains('pushing');
+                    
+                    if (hasPushingClass) {
+                        status.innerHTML = '<div class="status pass">✓ PASS: Push animation applied (300ms transition)</div>';
+                    } else {
+                        status.innerHTML = '<div class="status fail">✗ FAIL: Push animation not applied</div>';
+                    }
+                }, 50);
+            }, 100);
+        }
+        
+        function testEdgeCases() {
+            const status = document.getElementById('status-edge');
+            status.innerHTML = 'Testing...';
+            
+            let passed = 0;
+            let total = 3;
+            
+            // Test 1: Empty stack
+            animationManager.updateStackFrames([]);
+            setTimeout(() => {
+                const placeholder = document.querySelector('.stack-placeholder');
+                if (placeholder) passed++;
+                
+                // Test 2: No variables
+                animationManager.updateStackFrames([{
+                    frameId: 'test',
+                    functionName: 'empty',
+                    localVariables: new Map(),
+                    returnAddress: 0,
+                    lineNumber: 1
+                }]);
+                
+                setTimeout(() => {
+                    const noVarsMsg = document.querySelector('.stack-frame-var-value');
+                    if (noVarsMsg && noVarsMsg.textContent.includes('No local variables')) passed++;
+                    
+                    // Test 3: Complex types
+                    animationManager.updateStackFrames([{
+                        frameId: 'test',
+                        functionName: 'complex',
+                        localVariables: new Map([
+                            ['str', 'hello'],
+                            ['none', null],
+                            ['arr', [1, 2, 3]]
+                        ]),
+                        returnAddress: 0,
+                        lineNumber: 1
+                    }]);
+                    
+                    setTimeout(() => {
+                        const vars = document.querySelectorAll('.stack-frame-var-value');
+                        let hasQuotedString = false;
+                        let hasNone = false;
+                        
+                        vars.forEach(v => {
+                            if (v.textContent.includes('"hello"')) hasQuotedString = true;
+                            if (v.textContent === 'None') hasNone = true;
+                        });
+                        
+                        if (hasQuotedString && hasNone) passed++;
+                        
+                        if (passed === total) {
+                            status.innerHTML = `<div class="status pass">✓ PASS: All ${total} edge cases handled correctly</div>`;
+                        } else {
+                            status.innerHTML = `<div class="status fail">✗ FAIL: ${passed}/${total} edge cases passed</div>`;
+                        }
+                    }, 100);
+                }, 100);
+            }, 100);
+        }
+    </script>
+</body>
+</html>

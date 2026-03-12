@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task 7.2 Test - Bytecode Rendering</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            padding: 20px;
+            margin: 0;
+        }
+        
+        h1 {
+            color: #58a6ff;
+            margin-bottom: 10px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        #test-summary {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        #test-summary.pass {
+            background-color: rgba(63, 185, 80, 0.15);
+            border: 1px solid #3fb950;
+            color: #3fb950;
+        }
+        
+        #test-summary.fail {
+            background-color: rgba(248, 81, 73, 0.15);
+            border: 1px solid #f85149;
+            color: #f85149;
+        }
+        
+        #test-results {
+            margin-top: 20px;
+        }
+        
+        .test-result {
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .test-result.pass {
+            background-color: rgba(63, 185, 80, 0.1);
+            border-left: 3px solid #3fb950;
+        }
+        
+        .test-result.fail {
+            background-color: rgba(248, 81, 73, 0.1);
+            border-left: 3px solid #f85149;
+        }
+        
+        .test-status {
+            font-size: 20px;
+            font-weight: bold;
+            min-width: 30px;
+        }
+        
+        .test-result.pass .test-status {
+            color: #3fb950;
+        }
+        
+        .test-result.fail .test-status {
+            color: #f85149;
+        }
+        
+        .test-name {
+            font-weight: 600;
+            flex: 1;
+        }
+        
+        .test-message {
+            color: rgba(201, 209, 217, 0.7);
+            font-size: 14px;
+        }
+        
+        .visual-test {
+            margin-top: 40px;
+            padding: 20px;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+        }
+        
+        .visual-test h2 {
+            color: #58a6ff;
+            margin-top: 0;
+        }
+        
+        /* Copy bytecode panel styles from index.html */
+        .visualization-panel {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .panel-header {
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .panel-title {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 600;
+            color: #c9d1d9;
+        }
+        
+        .panel-subtitle {
+            font-size: 12px;
+            color: rgba(201, 209, 217, 0.6);
+            margin-left: 8px;
+        }
+        
+        .panel-content {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        
+        #bytecode-panel {
+            width: 500px;
+            height: 400px;
+        }
+        
+        #bytecode-content {
+            font-family: 'Courier New', 'Consolas', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        
+        .bytecode-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: rgba(201, 209, 217, 0.5);
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .bytecode-instruction {
+            display: flex;
+            align-items: center;
+            padding: 6px 8px;
+            margin: 2px 0;
+            border-radius: 4px;
+            transition: all 300ms ease-in-out;
+            cursor: default;
+        }
+        
+        .bytecode-instruction:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+        
+        .bytecode-instruction.active {
+            background-color: rgba(88, 166, 255, 0.2);
+            border-left: 3px solid #58a6ff;
+            padding-left: 5px;
+        }
+        
+        .bytecode-offset {
+            color: rgba(201, 209, 217, 0.5);
+            font-size: 11px;
+            min-width: 40px;
+            text-align: right;
+            margin-right: 12px;
+            font-weight: 600;
+        }
+        
+        .bytecode-opname {
+            color: #58a6ff;
+            font-weight: 600;
+            min-width: 120px;
+            margin-right: 12px;
+        }
+        
+        .bytecode-instruction.active .bytecode-opname {
+            color: #ffffff;
+        }
+        
+        .bytecode-arg {
+            color: rgba(201, 209, 217, 0.7);
+            font-style: italic;
+        }
+        
+        .bytecode-instruction.active .bytecode-arg {
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .bytecode-lineno {
+            color: rgba(201, 209, 217, 0.4);
+            font-size: 10px;
+            margin-left: auto;
+            padding-left: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Task 7.2: Bytecode Rendering with Instruction Pointer Highlighting</h1>
+        <p>Testing the updateBytecodePointer method implementation</p>
+        
+        <div id="test-summary">Running tests...</div>
+        
+        <div id="test-results"></div>
+        
+        <div class="visual-test">
+            <h2>Visual Test: Bytecode Panel</h2>
+            <p>The panel below should display bytecode instructions with the instruction at offset 8 highlighted:</p>
+            
+            <div id="bytecode-panel" class="visualization-panel">
+                <div class="panel-header">
+                    <h3 class="panel-title">Bytecode</h3>
+                    <span class="panel-subtitle">Compiled Instructions</span>
+                </div>
+                <div class="panel-content" id="bytecode-content">
+                    <div class="bytecode-placeholder">
+                        <p>No bytecode generated yet</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Copy necessary classes from index.html -->
+    <script>
+        class BytecodeInstruction {
+            constructor({ offset, opname, arg, argval, lineno }) {
+                this.offset = offset;
+                this.opname = opname;
+                this.arg = arg;
+                this.argval = argval;
+                this.lineno = lineno;
+            }
+        }
+        
+        class AnimationManager {
+            constructor(panels) {
+                this.monacoEditor = panels.monacoEditor;
+                this.pipelineDiagram = panels.pipelineDiagram;
+                this.bytecodePanel = panels.bytecodePanel;
+                this.stackPanel = panels.stackPanel;
+                this.memoryPanel = panels.memoryPanel;
+                this.gilIndicator = panels.gilIndicator;
+            }
+            
+            updateBytecodePointer(instructionPointer, bytecode = []) {
+                if (!this.bytecodePanel) {
+                    console.warn('Bytecode panel not available for update');
+                    return;
+                }
+                
+                const bytecodeContent = this.bytecodePanel.querySelector('#bytecode-content');
+                if (!bytecodeContent) {
+                    console.warn('Bytecode content element not found');
+                    return;
+                }
+                
+                if (!bytecode || bytecode.length === 0) {
+                    bytecodeContent.innerHTML = `
+                        <div class="bytecode-placeholder">
+                            <p>No bytecode generated yet</p>
+                            <p class="placeholder-hint">Write Python code and execute to see bytecode instructions</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                let html = '';
+                for (const instruction of bytecode) {
+                    const isActive = instruction.offset === instructionPointer;
+                    const activeClass = isActive ? 'active' : '';
+                    
+                    let argDisplay = '';
+                    if (instruction.arg !== null && instruction.arg !== undefined) {
+                        if (instruction.argval !== null && instruction.argval !== undefined && 
+                            instruction.argval !== instruction.arg) {
+                            argDisplay = `${instruction.arg} (${instruction.argval})`;
+                        } else {
+                            argDisplay = `${instruction.arg}`;
+                        }
+                    }
+                    
+                    html += `
+                        <div class="bytecode-instruction ${activeClass}" data-offset="${instruction.offset}">
+                            <span class="bytecode-offset">${instruction.offset}</span>
+                            <span class="bytecode-opname">${instruction.opname}</span>
+                            <span class="bytecode-arg">${argDisplay}</span>
+                            <span class="bytecode-lineno">line ${instruction.lineno}</span>
+                        </div>
+                    `;
+                }
+                
+                bytecodeContent.innerHTML = html;
+                
+                if (instructionPointer !== null && instructionPointer !== undefined) {
+                    const activeInstruction = bytecodeContent.querySelector('.bytecode-instruction.active');
+                    if (activeInstruction) {
+                        activeInstruction.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'center'
+                        });
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Load test script -->
+    <script src="verify-task-7.2.js"></script>
+</body>
+</html>

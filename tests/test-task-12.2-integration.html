@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task 12.2 Integration Test - ViewController</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            padding: 20px;
+            margin: 0;
+        }
+        
+        h1 {
+            color: #58a6ff;
+            border-bottom: 2px solid #58a6ff;
+            padding-bottom: 10px;
+        }
+        
+        .test-section {
+            background-color: #161b22;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .test-section h2 {
+            color: #58a6ff;
+            margin-top: 0;
+        }
+        
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .test-result.pass {
+            background-color: rgba(63, 185, 80, 0.15);
+            border-left: 4px solid #3fb950;
+        }
+        
+        .test-result.fail {
+            background-color: rgba(248, 81, 73, 0.15);
+            border-left: 4px solid #f85149;
+        }
+        
+        .control-buttons {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        button {
+            background-color: rgba(88, 166, 255, 0.1);
+            border: 1px solid rgba(88, 166, 255, 0.3);
+            color: #58a6ff;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        button:hover:not(:disabled) {
+            background-color: rgba(88, 166, 255, 0.2);
+            border-color: #58a6ff;
+        }
+        
+        button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        
+        button.playing {
+            background-color: rgba(88, 166, 255, 0.3);
+            border-color: #58a6ff;
+        }
+        
+        .state-display {
+            background-color: #0d1117;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .state-display .label {
+            color: #8b949e;
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        
+        .state-display .value {
+            color: #58a6ff;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        input[type="range"] {
+            flex: 1;
+            max-width: 300px;
+        }
+        
+        .speed-display {
+            color: #58a6ff;
+            font-weight: bold;
+            min-width: 50px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Task 12.2 Integration Test: ViewController Implementation</h1>
+    
+    <div class="test-section">
+        <h2>Test Setup</h2>
+        <div id="setup-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Interactive Test Controls</h2>
+        <p>Use these controls to test the ViewController functionality:</p>
+        
+        <div class="control-buttons">
+            <button id="btn-step-back">← Step Back</button>
+            <button id="btn-step-forward">→ Step Forward</button>
+            <button id="btn-auto-play">▶ Auto-play</button>
+            <button id="btn-reset">↻ Reset</button>
+            <button id="btn-explain">? Explain</button>
+        </div>
+        
+        <div class="speed-control">
+            <label for="speed-slider">Speed:</label>
+            <span>0.5x</span>
+            <input type="range" id="speed-slider" min="0.5" max="3" step="0.1" value="1">
+            <span>3x</span>
+            <span id="speed-display" class="speed-display">1.0x</span>
+        </div>
+        
+        <div class="state-display">
+            <div class="label">Current State</div>
+            <div class="value" id="current-state">State 0 / 5</div>
+        </div>
+        
+        <div class="state-display">
+            <div class="label">Current Line</div>
+            <div class="value" id="current-line">Line 1</div>
+        </div>
+        
+        <div class="state-display">
+            <div class="label">Auto-play Status</div>
+            <div class="value" id="autoplay-status">Stopped</div>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Automated Test Results</h2>
+        <div id="test-results"></div>
+    </div>
+    
+    <!-- Load required scripts -->
+    <script src="../src/scripts/data-models.js"></script>
+    <script src="../src/scripts/state-store.js"></script>
+    <script src="../src/scripts/view-controller.js"></script>
+    
+    <script>
+        // Test results container
+        const setupResults = document.getElementById('setup-results');
+        const testResults = document.getElementById('test-results');
+        const currentStateDisplay = document.getElementById('current-state');
+        const currentLineDisplay = document.getElementById('current-line');
+        const autoplayStatusDisplay = document.getElementById('autoplay-status');
+        
+        function logResult(message, passed) {
+            const div = document.createElement('div');
+            div.className = `test-result ${passed ? 'pass' : 'fail'}`;
+            div.textContent = (passed ? '✓ ' : '✗ ') + message;
+            testResults.appendChild(div);
+        }
+        
+        function logSetup(message, passed) {
+            const div = document.createElement('div');
+            div.className = `test-result ${passed ? 'pass' : 'fail'}`;
+            div.textContent = (passed ? '✓ ' : '✗ ') + message;
+            setupResults.appendChild(div);
+        }
+        
+        // Create mock execution states
+        const mockStates = [
+            {
+                stepNumber: 0,
+                lineNumber: 1,
+                pipelineStage: 'source',
+                instructionPointer: 0,
+                bytecode: [],
+                callStack: [],
+                heap: [],
+                gilStatus: { state: 'ACQUIRED', threadId: 1 },
+                explanation: 'Initial state'
+            },
+            {
+                stepNumber: 1,
+                lineNumber: 2,
+                pipelineStage: 'tokenizer',
+                instructionPointer: 2,
+                bytecode: [],
+                callStack: [],
+                heap: [],
+                gilStatus: { state: 'ACQUIRED', threadId: 1 },
+                explanation: 'Tokenizing source code'
+            },
+            {
+                stepNumber: 2,
+                lineNumber: 3,
+                pipelineStage: 'parser',
+                instructionPointer: 4,
+                bytecode: [],
+                callStack: [],
+                heap: [],
+                gilStatus: { state: 'ACQUIRED', threadId: 1 },
+                explanation: 'Parsing tokens into AST'
+            },
+            {
+                stepNumber: 3,
+                lineNumber: 4,
+                pipelineStage: 'compiler',
+                instructionPointer: 6,
+                bytecode: [],
+                callStack: [],
+                heap: [],
+                gilStatus: { state: 'ACQUIRED', threadId: 1 },
+                explanation: 'Compiling AST to bytecode'
+            },
+            {
+                stepNumber: 4,
+                lineNumber: 5,
+                pipelineStage: 'pvm',
+                instructionPointer: 8,
+                bytecode: [],
+                callStack: [],
+                heap: [],
+                gilStatus: { state: 'ACQUIRED', threadId: 1 },
+                explanation: 'Executing bytecode in PVM'
+            }
+        ];
+        
+        // Create mock AnimationManager
+        const mockAnimationManager = {
+            updateAll: function(state) {
+                console.log('AnimationManager.updateAll called with state:', state);
+                // Update display
+                updateStateDisplay();
+            }
+        };
+        
+        // Create StateStore instance
+        let stateStore;
+        let viewController;
+        
+        try {
+            stateStore = new StateStore();
+            stateStore.setStates(mockStates);
+            logSetup('StateStore created and initialized with 5 mock states', true);
+        } catch (error) {
+            logSetup('Failed to create StateStore: ' + error.message, false);
+        }
+        
+        // Create ViewController instance
+        try {
+            viewController = new ViewController(stateStore, mockAnimationManager);
+            logSetup('ViewController created successfully', true);
+        } catch (error) {
+            logSetup('Failed to create ViewController: ' + error.message, false);
+        }
+        
+        // Update state display
+        function updateStateDisplay() {
+            const state = stateStore.getCurrentState();
+            if (state) {
+                currentStateDisplay.textContent = `State ${stateStore.currentIndex} / ${stateStore.states.length - 1}`;
+                currentLineDisplay.textContent = `Line ${state.lineNumber}`;
+            }
+            autoplayStatusDisplay.textContent = viewController.isPlaying ? 'Playing' : 'Stopped';
+        }
+        
+        // Initial display update
+        updateStateDisplay();
+        
+        // Run automated tests
+        console.log('Running automated tests...');
+        
+        // Test 1: ViewController has required properties
+        try {
+            if (!viewController.stateStore) throw new Error('stateStore not set');
+            if (!viewController.animationManager) throw new Error('animationManager not set');
+            logResult('ViewController has required properties (stateStore, animationManager)', true);
+        } catch (error) {
+            logResult('ViewController properties check failed: ' + error.message, false);
+        }
+        
+        // Test 2: ViewController has required methods
+        try {
+            const methods = ['onStepForward', 'onStepBack', 'onReset', 'startAutoPlay', 'stopAutoPlay', 'updateButtonStates'];
+            for (const method of methods) {
+                if (typeof viewController[method] !== 'function') {
+                    throw new Error(`Method ${method} not found`);
+                }
+            }
+            logResult('ViewController has all required methods', true);
+        } catch (error) {
+            logResult('ViewController methods check failed: ' + error.message, false);
+        }
+        
+        // Test 3: onStepForward advances state
+        try {
+            const initialIndex = stateStore.currentIndex;
+            viewController.onStepForward();
+            if (stateStore.currentIndex !== initialIndex + 1) {
+                throw new Error(`Expected index ${initialIndex + 1}, got ${stateStore.currentIndex}`);
+            }
+            logResult('onStepForward advances state correctly', true);
+        } catch (error) {
+            logResult('onStepForward test failed: ' + error.message, false);
+        }
+        
+        // Test 4: onStepBack reverses state
+        try {
+            const initialIndex = stateStore.currentIndex;
+            viewController.onStepBack();
+            if (stateStore.currentIndex !== initialIndex - 1) {
+                throw new Error(`Expected index ${initialIndex - 1}, got ${stateStore.currentIndex}`);
+            }
+            logResult('onStepBack reverses state correctly', true);
+        } catch (error) {
+            logResult('onStepBack test failed: ' + error.message, false);
+        }
+        
+        // Test 5: onReset returns to initial state
+        try {
+            // Move to middle
+            stateStore.currentIndex = 2;
+            viewController.onReset();
+            if (stateStore.currentIndex !== 0) {
+                throw new Error(`Expected index 0, got ${stateStore.currentIndex}`);
+            }
+            logResult('onReset returns to initial state', true);
+        } catch (error) {
+            logResult('onReset test failed: ' + error.message, false);
+        }
+        
+        // Test 6: Button states update correctly
+        try {
+            // At beginning
+            stateStore.currentIndex = 0;
+            viewController.updateButtonStates();
+            if (!viewController.btnStepBack.disabled) {
+                throw new Error('Step Back should be disabled at beginning');
+            }
+            if (viewController.btnStepForward.disabled) {
+                throw new Error('Step Forward should be enabled at beginning');
+            }
+            
+            // At end
+            stateStore.currentIndex = mockStates.length - 1;
+            viewController.updateButtonStates();
+            if (viewController.btnStepBack.disabled) {
+                throw new Error('Step Back should be enabled at end');
+            }
+            if (!viewController.btnStepForward.disabled) {
+                throw new Error('Step Forward should be disabled at end');
+            }
+            
+            logResult('Button states update correctly based on position', true);
+        } catch (error) {
+            logResult('Button states test failed: ' + error.message, false);
+        }
+        
+        // Test 7: Speed control
+        try {
+            const initialSpeed = viewController.currentSpeed;
+            if (initialSpeed !== 1.0) {
+                throw new Error(`Expected default speed 1.0, got ${initialSpeed}`);
+            }
+            
+            viewController.currentSpeed = 2.0;
+            if (viewController.currentSpeed !== 2.0) {
+                throw new Error(`Expected speed 2.0, got ${viewController.currentSpeed}`);
+            }
+            
+            logResult('Speed control works correctly', true);
+        } catch (error) {
+            logResult('Speed control test failed: ' + error.message, false);
+        }
+        
+        // Test 8: Auto-play start/stop
+        try {
+            // Reset to beginning for auto-play test
+            stateStore.currentIndex = 0;
+            
+            viewController.startAutoPlay();
+            if (!viewController.isPlaying) {
+                throw new Error('isPlaying should be true after startAutoPlay');
+            }
+            if (!viewController.autoPlayInterval) {
+                throw new Error('autoPlayInterval should be set');
+            }
+            
+            // Wait a bit then stop
+            setTimeout(() => {
+                viewController.stopAutoPlay();
+                if (viewController.isPlaying) {
+                    throw new Error('isPlaying should be false after stopAutoPlay');
+                }
+                if (viewController.autoPlayInterval) {
+                    throw new Error('autoPlayInterval should be null');
+                }
+                logResult('Auto-play start/stop works correctly', true);
+            }, 500);
+        } catch (error) {
+            logResult('Auto-play test failed: ' + error.message, false);
+        }
+        
+        console.log('Automated tests complete. Use the interactive controls above to manually test the ViewController.');
+    </script>
+</body>
+</html>

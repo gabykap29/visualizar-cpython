@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task 5.2 Test: Monaco Line Highlighting</title>
+    
+    <!-- Monaco Editor CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/editor/editor.main.min.css" integrity="sha512-LF0e8xtSTJSHG+RDFLd+vP0HJCLJfZdLZ8QqJLLqLKJLJLJLJLJLJLJLJLJLJLJLJLJLJLJLJLJLJLJLJLJLJLJL" crossorigin="anonymous" />
+    
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --accent-color: #58a6ff;
+            --text-primary: #c9d1d9;
+            --border-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            padding: 20px;
+        }
+        
+        h1 {
+            color: var(--accent-color);
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 20px;
+            height: calc(100vh - 100px);
+        }
+        
+        #monaco-container {
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            padding: 20px;
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            height: fit-content;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        label {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+        
+        input[type="number"] {
+            padding: 8px 12px;
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+        
+        button {
+            padding: 10px 16px;
+            background-color: var(--accent-color);
+            color: #ffffff;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        
+        button:hover {
+            opacity: 0.8;
+        }
+        
+        button:active {
+            opacity: 0.6;
+        }
+        
+        .info {
+            padding: 12px;
+            background-color: rgba(88, 166, 255, 0.1);
+            border: 1px solid var(--accent-color);
+            border-radius: 4px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        
+        .status {
+            padding: 12px;
+            background-color: rgba(63, 185, 80, 0.1);
+            border: 1px solid #3fb950;
+            border-radius: 4px;
+            font-size: 13px;
+            margin-top: 10px;
+        }
+        
+        /* Monaco Editor Line Highlighting Styles */
+        .current-execution-line {
+            background-color: rgba(88, 166, 255, 0.15) !important;
+        }
+        
+        .current-execution-glyph {
+            background-color: var(--accent-color);
+            width: 4px !important;
+            margin-left: 3px;
+        }
+        
+        .current-execution-line-decoration {
+            background-color: var(--accent-color);
+            width: 3px !important;
+        }
+    </style>
+</head>
+<body>
+    <h1>Task 5.2 Test: Monaco Line Highlighting</h1>
+    
+    <div class="container">
+        <div id="monaco-container"></div>
+        
+        <div class="controls">
+            <div class="info">
+                <strong>Test Instructions:</strong><br>
+                1. Enter a line number (1-20)<br>
+                2. Click "Highlight Line"<br>
+                3. Observe the line highlighting with accent color<br>
+                4. Try different line numbers to see the highlight move
+            </div>
+            
+            <div class="control-group">
+                <label for="line-number">Line Number to Highlight:</label>
+                <input type="number" id="line-number" min="1" max="20" value="5">
+            </div>
+            
+            <button onclick="highlightLine()">Highlight Line</button>
+            <button onclick="clearHighlight()">Clear Highlight</button>
+            <button onclick="testSequence()">Test Sequence (Auto)</button>
+            
+            <div id="status" class="status" style="display: none;"></div>
+        </div>
+    </div>
+    
+    <!-- Monaco Editor Loader -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js" integrity="sha512-FKc/fanGTT6242TCHlIGTfGVFW6J1hIW8NwvnuIJCL8m8naaXmDBu2FbFIKLlPwwK33Uc4f+wfUWG8vRRQ3P6A==" crossorigin="anonymous"></script>
+    
+    <script>
+        let editor;
+        let animationManager;
+        
+        // AnimationManager class (simplified for testing)
+        class AnimationManager {
+            constructor(panels) {
+                this.monacoEditor = panels.monacoEditor;
+                this.currentDecorations = [];
+            }
+            
+            updateMonacoHighlight(lineNumber) {
+                if (!this.monacoEditor) {
+                    console.warn('Monaco Editor not available for highlighting');
+                    return;
+                }
+                
+                // Clear previous decorations and set new ones
+                this.currentDecorations = this.monacoEditor.deltaDecorations(
+                    this.currentDecorations,
+                    [
+                        {
+                            range: new monaco.Range(lineNumber, 1, lineNumber, 1),
+                            options: {
+                                isWholeLine: true,
+                                className: 'current-execution-line',
+                                glyphMarginClassName: 'current-execution-glyph',
+                                linesDecorationsClassName: 'current-execution-line-decoration',
+                                backgroundColor: 'rgba(88, 166, 255, 0.15)',
+                                overviewRuler: {
+                                    color: '#58a6ff',
+                                    position: monaco.editor.OverviewRulerLane.Full
+                                }
+                            }
+                        }
+                    ]
+                );
+                
+                // Scroll the editor to reveal the highlighted line
+                this.monacoEditor.revealLineInCenter(lineNumber);
+            }
+            
+            clearHighlight() {
+                if (!this.monacoEditor) {
+                    return;
+                }
+                
+                this.currentDecorations = this.monacoEditor.deltaDecorations(
+                    this.currentDecorations,
+                    []
+                );
+            }
+        }
+        
+        // Initialize Monaco Editor
+        require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } });
+        
+        require(['vs/editor/editor.main'], function() {
+            const sampleCode = `# Python Execution Visualizer
+# Sample code for testing line highlighting
+
+def fibonacci(n):
+    if n <= 1:
+        return n
+    else:
+        return fibonacci(n-1) + fibonacci(n-2)
+
+def factorial(n):
+    if n == 0:
+        return 1
+    else:
+        return n * factorial(n-1)
+
+# Test the functions
+result1 = fibonacci(5)
+result2 = factorial(5)
+print(f"Fibonacci(5) = {result1}")
+print(f"Factorial(5) = {result2}")`;
+            
+            editor = monaco.editor.create(document.getElementById('monaco-container'), {
+                value: sampleCode,
+                language: 'python',
+                theme: 'vs-dark',
+                automaticLayout: true,
+                fontSize: 14,
+                lineNumbers: 'on',
+                minimap: { enabled: true },
+                scrollBeyondLastLine: false,
+                wordWrap: 'on',
+                glyphMargin: true
+            });
+            
+            // Create AnimationManager instance
+            animationManager = new AnimationManager({
+                monacoEditor: editor
+            });
+            
+            console.log('Monaco Editor initialized successfully');
+            showStatus('✓ Monaco Editor initialized. Ready to test line highlighting!');
+        });
+        
+        function highlightLine() {
+            const lineNumber = parseInt(document.getElementById('line-number').value);
+            
+            if (!animationManager) {
+                showStatus('✗ AnimationManager not initialized yet', 'error');
+                return;
+            }
+            
+            if (isNaN(lineNumber) || lineNumber < 1) {
+                showStatus('✗ Please enter a valid line number (1 or greater)', 'error');
+                return;
+            }
+            
+            animationManager.updateMonacoHighlight(lineNumber);
+            showStatus(`✓ Line ${lineNumber} highlighted successfully!`);
+        }
+        
+        function clearHighlight() {
+            if (!animationManager) {
+                showStatus('✗ AnimationManager not initialized yet', 'error');
+                return;
+            }
+            
+            animationManager.clearHighlight();
+            showStatus('✓ Highlight cleared');
+        }
+        
+        async function testSequence() {
+            if (!animationManager) {
+                showStatus('✗ AnimationManager not initialized yet', 'error');
+                return;
+            }
+            
+            showStatus('Running automatic test sequence...');
+            
+            const testLines = [1, 5, 10, 15, 20, 12, 7, 3];
+            
+            for (let i = 0; i < testLines.length; i++) {
+                const line = testLines[i];
+                document.getElementById('line-number').value = line;
+                animationManager.updateMonacoHighlight(line);
+                showStatus(`✓ Testing line ${line} (${i + 1}/${testLines.length})`);
+                await sleep(800);
+            }
+            
+            showStatus('✓ Automatic test sequence completed!');
+        }
+        
+        function showStatus(message, type = 'success') {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.style.display = 'block';
+            
+            if (type === 'error') {
+                statusEl.style.backgroundColor = 'rgba(248, 81, 73, 0.1)';
+                statusEl.style.borderColor = '#f85149';
+            } else {
+                statusEl.style.backgroundColor = 'rgba(63, 185, 80, 0.1)';
+                statusEl.style.borderColor = '#3fb950';
+            }
+        }
+        
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+    </script>
+</body>
+</html>

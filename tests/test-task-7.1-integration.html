@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task 7.1 - Integration Test</title>
+    
+    <style>
+        /* CSS Variables for Dark Theme */
+        :root {
+            --bg-primary: #0d1117;
+            --accent-color: #58a6ff;
+            --text-primary: #c9d1d9;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --transition-duration: 300ms;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        /* Layout Grid */
+        #app-container {
+            display: grid;
+            grid-template-columns: 30% 70%;
+            grid-template-rows: 100%;
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* Left Panel (Monaco Editor placeholder) */
+        #monaco-container {
+            grid-column: 1;
+            grid-row: 1;
+            width: 100%;
+            height: 100%;
+            border-right: 1px solid var(--border-color);
+            background-color: rgba(255, 255, 255, 0.02);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(201, 209, 217, 0.5);
+        }
+        
+        /* Right Panel Container */
+        #right-panel {
+            grid-column: 2;
+            grid-row: 1;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-primary);
+        }
+        
+        /* Pipeline Diagram Placeholder */
+        #pipeline-diagram {
+            width: 100%;
+            height: 20%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: rgba(255, 255, 255, 0.02);
+            border-bottom: 1px solid var(--border-color);
+            color: rgba(201, 209, 217, 0.5);
+        }
+        
+        /* Visualization Panels Container */
+        #visualization-panels {
+            width: 100%;
+            height: 80%;
+            display: flex;
+            flex-wrap: wrap;
+            padding: 10px;
+            gap: 10px;
+            overflow: hidden;
+        }
+        
+        /* Common Panel Styles */
+        .visualization-panel {
+            background-color: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: all var(--transition-duration) ease-in-out;
+        }
+        
+        .visualization-panel:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        .panel-header {
+            padding: 12px 16px;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .panel-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--accent-color);
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .panel-subtitle {
+            font-size: 11px;
+            color: rgba(201, 209, 217, 0.6);
+            font-weight: 400;
+        }
+        
+        .panel-content {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 12px;
+        }
+        
+        /* Custom scrollbar for panels */
+        .panel-content::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .panel-content::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+        }
+        
+        .panel-content::-webkit-scrollbar-thumb {
+            background: rgba(88, 166, 255, 0.3);
+            border-radius: 4px;
+        }
+        
+        .panel-content::-webkit-scrollbar-thumb:hover {
+            background: rgba(88, 166, 255, 0.5);
+        }
+        
+        /* Bytecode Panel Styles */
+        #bytecode-panel {
+            width: 35%;
+            height: 75%;
+            min-width: 300px;
+        }
+        
+        #bytecode-content {
+            font-family: 'Courier New', 'Consolas', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        
+        .bytecode-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: rgba(201, 209, 217, 0.5);
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .bytecode-placeholder p {
+            margin: 8px 0;
+        }
+        
+        .placeholder-hint {
+            font-size: 11px;
+            color: rgba(201, 209, 217, 0.3);
+        }
+        
+        /* Bytecode Instruction Styles */
+        .bytecode-instruction {
+            display: flex;
+            align-items: center;
+            padding: 6px 8px;
+            margin: 2px 0;
+            border-radius: 4px;
+            transition: all var(--transition-duration) ease-in-out;
+            cursor: default;
+        }
+        
+        .bytecode-instruction:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+        
+        .bytecode-instruction.active {
+            background-color: rgba(88, 166, 255, 0.2);
+            border-left: 3px solid var(--accent-color);
+            padding-left: 5px;
+        }
+        
+        .bytecode-offset {
+            color: rgba(201, 209, 217, 0.5);
+            font-size: 11px;
+            min-width: 40px;
+            text-align: right;
+            margin-right: 12px;
+            font-weight: 600;
+        }
+        
+        .bytecode-opname {
+            color: var(--accent-color);
+            font-weight: 600;
+            min-width: 120px;
+            margin-right: 12px;
+        }
+        
+        .bytecode-instruction.active .bytecode-opname {
+            color: #ffffff;
+        }
+        
+        .bytecode-arg {
+            color: rgba(201, 209, 217, 0.7);
+            font-style: italic;
+        }
+        
+        .bytecode-instruction.active .bytecode-arg {
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .bytecode-lineno {
+            color: rgba(201, 209, 217, 0.4);
+            font-size: 10px;
+            margin-left: auto;
+            padding-left: 12px;
+        }
+        
+        /* Test Controls */
+        #test-controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            z-index: 1000;
+        }
+        
+        #test-controls h3 {
+            color: var(--accent-color);
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        
+        #test-controls button {
+            background-color: var(--accent-color);
+            color: #ffffff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all var(--transition-duration) ease-in-out;
+            margin: 5px 0;
+            width: 100%;
+        }
+        
+        #test-controls button:hover {
+            background-color: #4a8fd8;
+        }
+        
+        #test-status {
+            margin-top: 10px;
+            font-size: 11px;
+            color: rgba(201, 209, 217, 0.7);
+        }
+    </style>
+</head>
+<body>
+    <div id="app-container">
+        <!-- Monaco Editor Container (30% width, left panel) -->
+        <div id="monaco-container">
+            <div style="text-align: center;">
+                <p style="font-size: 18px; margin-bottom: 10px;">Monaco Editor</p>
+                <p style="font-size: 12px;">(Placeholder)</p>
+            </div>
+        </div>
+        
+        <!-- Right Panel (70% width, will contain visualizations) -->
+        <div id="right-panel">
+            <!-- Pipeline Diagram (center-top region, 70% width, 20% height) -->
+            <div id="pipeline-diagram">
+                <p>Pipeline Diagram (Placeholder)</p>
+            </div>
+            
+            <!-- Visualization Panels Container (below pipeline, 80% height) -->
+            <div id="visualization-panels">
+                <!-- Bytecode Panel (center-left, 35% width, 60% height) -->
+                <div id="bytecode-panel" class="visualization-panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Bytecode</h3>
+                        <span class="panel-subtitle">Compiled Instructions</span>
+                    </div>
+                    <div class="panel-content" id="bytecode-content">
+                        <!-- Bytecode instructions will be rendered here -->
+                        <div class="bytecode-placeholder">
+                            <p>No bytecode generated yet</p>
+                            <p class="placeholder-hint">Write Python code and execute to see bytecode instructions</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Test Controls -->
+    <div id="test-controls">
+        <h3>Integration Tests</h3>
+        <button onclick="loadSampleBytecode()">Load Sample Bytecode</button>
+        <button onclick="highlightInstruction(2)">Highlight Instruction 2</button>
+        <button onclick="clearBytecode()">Clear Bytecode</button>
+        <button onclick="testScrolling()">Test Scrolling</button>
+        <div id="test-status"></div>
+    </div>
+    
+    <script>
+        // Sample bytecode data
+        const sampleBytecode = [
+            { offset: 0, opname: 'LOAD_CONST', arg: '0 (5)', lineno: 1 },
+            { offset: 2, opname: 'STORE_NAME', arg: '0 (x)', lineno: 1 },
+            { offset: 4, opname: 'LOAD_CONST', arg: '1 (10)', lineno: 2 },
+            { offset: 6, opname: 'STORE_NAME', arg: '1 (y)', lineno: 2 },
+            { offset: 8, opname: 'LOAD_NAME', arg: '0 (x)', lineno: 3 },
+            { offset: 10, opname: 'LOAD_NAME', arg: '1 (y)', lineno: 3 },
+            { offset: 12, opname: 'BINARY_ADD', arg: '', lineno: 3 },
+            { offset: 14, opname: 'STORE_NAME', arg: '2 (result)', lineno: 3 },
+            { offset: 16, opname: 'LOAD_CONST', arg: '2 (None)', lineno: 3 },
+            { offset: 18, opname: 'RETURN_VALUE', arg: '', lineno: 3 }
+        ];
+        
+        function loadSampleBytecode() {
+            const content = document.getElementById('bytecode-content');
+            content.innerHTML = '';
+            
+            sampleBytecode.forEach(instr => {
+                const instrElement = document.createElement('div');
+                instrElement.className = 'bytecode-instruction';
+                instrElement.dataset.offset = instr.offset;
+                
+                instrElement.innerHTML = `
+                    <span class="bytecode-offset">${instr.offset}</span>
+                    <span class="bytecode-opname">${instr.opname}</span>
+                    <span class="bytecode-arg">${instr.arg}</span>
+                    <span class="bytecode-lineno">line ${instr.lineno}</span>
+                `;
+                
+                content.appendChild(instrElement);
+            });
+            
+            updateStatus('Sample bytecode loaded successfully');
+        }
+        
+        function highlightInstruction(offset) {
+            const instructions = document.querySelectorAll('.bytecode-instruction');
+            instructions.forEach(instr => {
+                instr.classList.remove('active');
+                if (parseInt(instr.dataset.offset) === offset) {
+                    instr.classList.add('active');
+                    instr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            });
+            
+            updateStatus(`Highlighted instruction at offset ${offset}`);
+        }
+        
+        function clearBytecode() {
+            const content = document.getElementById('bytecode-content');
+            content.innerHTML = `
+                <div class="bytecode-placeholder">
+                    <p>No bytecode generated yet</p>
+                    <p class="placeholder-hint">Write Python code and execute to see bytecode instructions</p>
+                </div>
+            `;
+            
+            updateStatus('Bytecode cleared');
+        }
+        
+        function testScrolling() {
+            const content = document.getElementById('bytecode-content');
+            content.innerHTML = '';
+            
+            // Generate many instructions to test scrolling
+            for (let i = 0; i < 50; i++) {
+                const instrElement = document.createElement('div');
+                instrElement.className = 'bytecode-instruction';
+                instrElement.dataset.offset = i * 2;
+                
+                if (i === 25) {
+                    instrElement.classList.add('active');
+                }
+                
+                instrElement.innerHTML = `
+                    <span class="bytecode-offset">${i * 2}</span>
+                    <span class="bytecode-opname">LOAD_CONST</span>
+                    <span class="bytecode-arg">${i} (value_${i})</span>
+                    <span class="bytecode-lineno">line ${Math.floor(i / 3) + 1}</span>
+                `;
+                
+                content.appendChild(instrElement);
+            }
+            
+            // Scroll to active instruction
+            const activeInstr = content.querySelector('.bytecode-instruction.active');
+            if (activeInstr) {
+                activeInstr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            
+            updateStatus('Loaded 50 instructions for scrolling test');
+        }
+        
+        function updateStatus(message) {
+            const status = document.getElementById('test-status');
+            status.textContent = message;
+            
+            // Clear status after 3 seconds
+            setTimeout(() => {
+                status.textContent = '';
+            }, 3000);
+        }
+        
+        // Verify panel dimensions on load
+        window.addEventListener('load', () => {
+            const panel = document.getElementById('bytecode-panel');
+            const rect = panel.getBoundingClientRect();
+            const parentRect = panel.parentElement.getBoundingClientRect();
+            
+            const widthPercent = (rect.width / parentRect.width * 100).toFixed(1);
+            
+            console.log('Bytecode Panel Dimensions:');
+            console.log(`  Width: ${rect.width}px (${widthPercent}% of parent)`);
+            console.log(`  Height: ${rect.height}px`);
+            console.log(`  Expected width: ~35% of parent`);
+            
+            updateStatus('Integration test ready');
+        });
+    </script>
+</body>
+</html>

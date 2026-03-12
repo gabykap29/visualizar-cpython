@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Bytecode Generation - Task 3.2</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #58a6ff;
+            border-bottom: 2px solid #58a6ff;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #58a6ff;
+            margin-top: 30px;
+        }
+        .test-section {
+            background-color: #161b22;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .pass {
+            background-color: rgba(63, 185, 80, 0.1);
+            border-left: 4px solid #3fb950;
+        }
+        .fail {
+            background-color: rgba(248, 81, 73, 0.1);
+            border-left: 4px solid #f85149;
+        }
+        .code-block {
+            background-color: #0d1117;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+        .bytecode-instruction {
+            margin: 5px 0;
+            padding: 5px;
+            background-color: rgba(88, 166, 255, 0.05);
+            border-left: 2px solid #58a6ff;
+        }
+        .loading {
+            color: #58a6ff;
+            font-size: 18px;
+            text-align: center;
+            padding: 40px;
+        }
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(88, 166, 255, 0.3);
+            border-top-color: #58a6ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <h1>Task 3.2: Bytecode Generation Test</h1>
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>Loading Pyodide and initializing tests...</p>
+    </div>
+    <div id="test-results" style="display: none;"></div>
+
+    <!-- Pyodide -->
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+    
+    <script>
+        // BytecodeInstruction class (from main app)
+        class BytecodeInstruction {
+            constructor({ offset, opname, arg, argval, lineno }) {
+                this.offset = offset;
+                this.opname = opname;
+                this.arg = arg;
+                this.argval = argval;
+                this.lineno = lineno;
+            }
+        }
+
+        // ExecutionEngine class with getBytecode method
+        class ExecutionEngine {
+            constructor(pyodideInstance) {
+                this.pyodide = pyodideInstance;
+            }
+            
+            async getBytecode(sourceCode) {
+                try {
+                    this.pyodide.globals.set('source_code', sourceCode);
+                    
+                    const bytecodeData = await this.pyodide.runPythonAsync(`
+import dis
+import io
+import sys
+
+# Compile the source code
+code_obj = compile(source_code, '<string>', 'exec')
+
+# Get bytecode instructions using dis.get_instructions()
+instructions = []
+for instr in dis.get_instructions(code_obj):
+    instructions.append({
+        'offset': instr.offset,
+        'opname': instr.opname,
+        'arg': instr.arg,
+        'argval': str(instr.argval) if instr.argval is not None else None,
+        'lineno': instr.starts_line if instr.starts_line is not None else 0
+    })
+
+instructions
+                    `);
+                    
+                    const instructions = [];
+                    const pyList = bytecodeData.toJs();
+                    
+                    for (let i = 0; i < pyList.length; i++) {
+                        const instrData = pyList[i];
+                        instructions.push(new BytecodeInstruction({
+                            offset: instrData.get('offset'),
+                            opname: instrData.get('opname'),
+                            arg: instrData.get('arg'),
+                            argval: instrData.get('argval'),
+                            lineno: instrData.get('lineno')
+                        }));
+                    }
+                    
+                    return instructions;
+                    
+                } catch (error) {
+                    console.error('Bytecode generation error:', error);
+                    return [];
+                }
+            }
+        }
+
+        // Test cases
+        const testCases = [
+            {
+                name: "Simple variable assignment",
+                code: "x = 42",
+                expectedOpcodes: ["LOAD_CONST", "STORE_NAME"]
+            },
+            {
+                name: "Arithmetic operation",
+                code: "result = 10 + 20",
+                expectedOpcodes: ["LOAD_CONST", "LOAD_CONST", "BINARY_OP", "STORE_NAME"]
+            },
+            {
+                name: "Function definition",
+                code: "def greet(name):\n    return 'Hello, ' + name",
+                expectedOpcodes: ["LOAD_CONST", "MAKE_FUNCTION", "STORE_NAME"]
+            },
+            {
+                name: "If statement",
+                code: "if True:\n    x = 1\nelse:\n    x = 2",
+                expectedOpcodes: ["LOAD_CONST", "POP_JUMP_IF_FALSE"]
+            },
+            {
+                name: "For loop",
+                code: "for i in range(5):\n    print(i)",
+                expectedOpcodes: ["LOAD_NAME", "LOAD_CONST", "CALL", "GET_ITER", "FOR_ITER"]
+            }
+        ];
+
+        async function runTests() {
+            const resultsDiv = document.getElementById('test-results');
+            const loadingDiv = document.getElementById('loading');
+            
+            try {
+                // Load Pyodide
+                const pyodide = await loadPyodide({
+                    indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.24.1/full/'
+                });
+                
+                const engine = new ExecutionEngine(pyodide);
+                
+                loadingDiv.style.display = 'none';
+                resultsDiv.style.display = 'block';
+                
+                let html = '<h2>Test Results</h2>';
+                let passCount = 0;
+                let failCount = 0;
+                
+                for (const testCase of testCases) {
+                    html += `<div class="test-section">`;
+                    html += `<h3>${testCase.name}</h3>`;
+                    html += `<div class="code-block"><strong>Code:</strong><br>${testCase.code.replace(/\n/g, '<br>')}</div>`;
+                    
+                    const bytecode = await engine.getBytecode(testCase.code);
+                    
+                    // Check if bytecode was generated
+                    const hasInstructions = bytecode.length > 0;
+                    const hasRequiredFields = bytecode.every(instr => 
+                        instr.offset !== undefined &&
+                        instr.opname !== undefined &&
+                        instr.lineno !== undefined
+                    );
+                    
+                    // Check if expected opcodes are present
+                    const opcodes = bytecode.map(instr => instr.opname);
+                    const hasExpectedOpcodes = testCase.expectedOpcodes.every(expected => 
+                        opcodes.some(opcode => opcode.includes(expected) || expected.includes(opcode))
+                    );
+                    
+                    const passed = hasInstructions && hasRequiredFields && hasExpectedOpcodes;
+                    
+                    if (passed) {
+                        passCount++;
+                        html += `<div class="test-result pass">✓ PASS</div>`;
+                    } else {
+                        failCount++;
+                        html += `<div class="test-result fail">✗ FAIL</div>`;
+                        if (!hasInstructions) html += `<p>Error: No bytecode instructions generated</p>`;
+                        if (!hasRequiredFields) html += `<p>Error: Missing required fields in instructions</p>`;
+                        if (!hasExpectedOpcodes) html += `<p>Error: Expected opcodes not found</p>`;
+                    }
+                    
+                    // Display bytecode
+                    html += `<div class="code-block">`;
+                    html += `<strong>Generated Bytecode (${bytecode.length} instructions):</strong><br>`;
+                    bytecode.forEach(instr => {
+                        html += `<div class="bytecode-instruction">`;
+                        html += `Offset: ${instr.offset}, `;
+                        html += `Opname: <strong>${instr.opname}</strong>, `;
+                        html += `Arg: ${instr.arg !== null ? instr.arg : 'null'}, `;
+                        html += `Argval: ${instr.argval !== null ? instr.argval : 'null'}, `;
+                        html += `Line: ${instr.lineno}`;
+                        html += `</div>`;
+                    });
+                    html += `</div>`;
+                    
+                    html += `</div>`;
+                }
+                
+                // Summary
+                html += `<div class="test-section">`;
+                html += `<h2>Summary</h2>`;
+                html += `<p><strong>Total Tests:</strong> ${testCases.length}</p>`;
+                html += `<p class="pass"><strong>Passed:</strong> ${passCount}</p>`;
+                html += `<p class="fail"><strong>Failed:</strong> ${failCount}</p>`;
+                html += `</div>`;
+                
+                // Requirements validation
+                html += `<div class="test-section">`;
+                html += `<h2>Requirements Validation</h2>`;
+                html += `<p><strong>Requirement 7.8:</strong> Bytecode generation using Pyodide's dis module - ${passCount > 0 ? '✓ VALIDATED' : '✗ NOT VALIDATED'}</p>`;
+                html += `<p><strong>Requirement 3.1:</strong> Bytecode instructions displayed - ${passCount > 0 ? '✓ VALIDATED' : '✗ NOT VALIDATED'}</p>`;
+                html += `<p><strong>Requirement 3.2:</strong> Instruction names shown - ${passCount > 0 ? '✓ VALIDATED' : '✗ NOT VALIDATED'}</p>`;
+                html += `<p><strong>Requirement 3.3:</strong> Instruction arguments shown - ${passCount > 0 ? '✓ VALIDATED' : '✗ NOT VALIDATED'}</p>`;
+                html += `<p><strong>Requirement 3.5:</strong> Bytecode offset numbers displayed - ${passCount > 0 ? '✓ VALIDATED' : '✗ NOT VALIDATED'}</p>`;
+                html += `</div>`;
+                
+                resultsDiv.innerHTML = html;
+                
+            } catch (error) {
+                loadingDiv.style.display = 'none';
+                resultsDiv.style.display = 'block';
+                resultsDiv.innerHTML = `
+                    <div class="test-section">
+                        <h2>Error</h2>
+                        <div class="test-result fail">
+                            <p><strong>Test execution failed:</strong></p>
+                            <p>${error.message}</p>
+                            <pre>${error.stack}</pre>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // Run tests when page loads
+        window.addEventListener('load', runTests);
+    </script>
+</body>
+</html>

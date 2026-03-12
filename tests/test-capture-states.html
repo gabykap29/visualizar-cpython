@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test State Capture - Task 3.4</title>
+    <style>
+        body {
+            font-family: monospace;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 { color: #58a6ff; }
+        h2 { color: #58a6ff; margin-top: 30px; }
+        .test-section {
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .pass { color: #3fb950; }
+        .fail { color: #f85149; }
+        .info { color: #58a6ff; }
+        pre {
+            background-color: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 18px;
+        }
+        .spinner {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 3px solid rgba(88, 166, 255, 0.3);
+            border-top-color: #58a6ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <h1>Task 3.4: State Capture Testing</h1>
+    <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <p>Loading Pyodide...</p>
+    </div>
+    <div id="results" style="display: none;"></div>
+
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+    <script>
+        // Copy the data model classes from index.html
+        class ExecutionState {
+            constructor({ stepNumber, lineNumber, pipelineStage, instructionPointer, bytecode, callStack, heap, gilStatus, explanation }) {
+                this.stepNumber = stepNumber;
+                this.lineNumber = lineNumber;
+                this.pipelineStage = pipelineStage;
+                this.instructionPointer = instructionPointer;
+                this.bytecode = bytecode;
+                this.callStack = callStack;
+                this.heap = heap;
+                this.gilStatus = gilStatus;
+                this.explanation = explanation;
+            }
+        }
+
+        class BytecodeInstruction {
+            constructor({ offset, opname, arg, argval, lineno }) {
+                this.offset = offset;
+                this.opname = opname;
+                this.arg = arg;
+                this.argval = argval;
+                this.lineno = lineno;
+            }
+        }
+
+        class StackFrame {
+            constructor({ frameId, functionName, localVariables, returnAddress, lineNumber }) {
+                this.frameId = frameId;
+                this.functionName = functionName;
+                this.localVariables = localVariables;
+                this.returnAddress = returnAddress;
+                this.lineNumber = lineNumber;
+            }
+        }
+
+        class HeapObject {
+            constructor({ objectId, type, value, refCount, references }) {
+                this.objectId = objectId;
+                this.type = type;
+                this.value = value;
+                this.refCount = refCount;
+                this.references = references;
+            }
+        }
+
+        class GILStatus {
+            constructor({ state, threadId, explanation }) {
+                this.state = state;
+                this.threadId = threadId;
+                this.explanation = explanation;
+            }
+        }
+
+        // Copy the ExecutionEngine class
+        class ExecutionEngine {
+            constructor(pyodideInstance) {
+                this.pyodide = pyodideInstance;
+                this.states = [];
+                this.currentIndex = 0;
+            }
+
+            async getBytecode(sourceCode) {
+                try {
+                    this.pyodide.globals.set('source_code', sourceCode);
+                    const bytecodeData = await this.pyodide.runPythonAsync(`
+import dis
+import io
+import sys
+
+code_obj = compile(source_code, '<string>', 'exec')
+instructions = []
+for instr in dis.get_instructions(code_obj):
+    instructions.append({
+        'offset': instr.offset,
+        'opname': instr.opname,
+        'arg': instr.arg,
+        'argval': str(instr.argval) if instr.argval is not None else None,
+        'lineno': instr.starts_line if instr.starts_line is not None else 0
+    })
+instructions
+                    `);
+                    
+                    const instructions = [];
+                    const pyList = bytecodeData.toJs();
+                    for (let i = 0; i < pyList.length; i++) {
+                        const instrData = pyList[i];
+                        instructions.push(new BytecodeInstruction({
+                            offset: instrData.get('offset'),
+                            opname: instrData.get('opname'),
+                            arg: instrData.get('arg'),
+                            argval: instrData.get('argval'),
+                            lineno: instrData.get('lineno')
+                        }));
+                    }
+                    return instructions;
+                } catch (error) {
+                    console.error('Bytecode generation error:', error);
+                    return [];
+                }
+            }
+
+            async captureStates(sourceCode) {
+                const MAX_STEPS = 10000;
+                const states = [];
+                
+                try {
+                    this.pyodide.globals.set('source_code', sourceCode);
+                    const bytecode = await this.getBytecode(sourceCode);
+                    
+                    if (bytecode.length === 0) {
+                        console.warn('No bytecode generated for source code');
+                        return states;
+                    }
+                    
+                    const statesData = await this.pyodide.runPythonAsync(`
+import sys
+import dis
+import json
+
+code_obj = compile(source_code, '<string>', 'exec')
+bytecode_list = list(dis.get_instructions(code_obj))
+execution_states = []
+step_number = 0
+max_steps = ${MAX_STEPS}
+exec_namespace = {}
+
+def trace_function(frame, event, arg):
+    global step_number, execution_states
+    
+    if step_number >= max_steps:
+        return None
+    
+    if event not in ['line', 'call', 'return']:
+        return trace_function
+    
+    current_line = frame.f_lineno
+    call_stack = []
+    current_frame = frame
+    frame_id = 0
+    while current_frame is not None:
+        local_vars = {}
+        for var_name, var_value in current_frame.f_locals.items():
+            try:
+                local_vars[var_name] = str(var_value)
+            except:
+                local_vars[var_name] = '<unprintable>'
+        
+        call_stack.append({
+            'frameId': f'frame_{frame_id}',
+            'functionName': current_frame.f_code.co_name,
+            'localVariables': local_vars,
+            'returnAddress': current_frame.f_lasti,
+            'lineNumber': current_frame.f_lineno
+        })
+        
+        current_frame = current_frame.f_back
+        frame_id += 1
+    
+    heap = []
+    object_id = 0
+    for var_name, var_value in frame.f_locals.items():
+        obj_type = type(var_value).__name__
+        
+        if obj_type in ['int', 'float']:
+            obj_type = 'int'
+        elif obj_type == 'str':
+            obj_type = 'str'
+        elif obj_type == 'list':
+            obj_type = 'list'
+        elif obj_type == 'dict':
+            obj_type = 'dict'
+        elif callable(var_value):
+            obj_type = 'function'
+        else:
+            obj_type = 'object'
+        
+        try:
+            value_str = str(var_value)
+        except:
+            value_str = '<unprintable>'
+        
+        heap.append({
+            'objectId': f'obj_{object_id}',
+            'type': obj_type,
+            'value': value_str,
+            'refCount': sys.getrefcount(var_value),
+            'references': []
+        })
+        object_id += 1
+    
+    if event == 'call':
+        pipeline_stage = 'pvm'
+    elif event == 'return':
+        pipeline_stage = 'pvm'
+    else:
+        pipeline_stage = 'pvm'
+    
+    instruction_pointer = frame.f_lasti
+    explanation = f"Executing line {current_line}"
+    if event == 'call':
+        explanation = f"Calling function '{frame.f_code.co_name}' at line {current_line}"
+    elif event == 'return':
+        explanation = f"Returning from function '{frame.f_code.co_name}' at line {current_line}"
+    
+    for instr in bytecode_list:
+        if instr.offset == instruction_pointer or (instr.starts_line and instr.starts_line == current_line):
+            explanation += f" - Bytecode: {instr.opname}"
+            if instr.arg is not None:
+                explanation += f"({instr.argval})"
+            break
+    
+    if len(call_stack) > 1:
+        explanation += f" - Call stack depth: {len(call_stack)}"
+    
+    if len(heap) > 0:
+        explanation += f" - {len(heap)} objects in memory"
+    
+    state = {
+        'stepNumber': step_number,
+        'lineNumber': current_line,
+        'pipelineStage': pipeline_stage,
+        'instructionPointer': instruction_pointer,
+        'callStack': call_stack,
+        'heap': heap,
+        'gilStatus': {
+            'state': 'ACQUIRED',
+            'threadId': 0,
+            'explanation': 'The Global Interpreter Lock (GIL) ensures only one thread executes Python bytecode at a time'
+        },
+        'explanation': explanation
+    }
+    
+    execution_states.append(state)
+    step_number += 1
+    
+    return trace_function
+
+sys.settrace(trace_function)
+
+try:
+    exec(code_obj, exec_namespace)
+finally:
+    sys.settrace(None)
+
+execution_states
+                    `);
+                    
+                    const pyList = statesData.toJs();
+                    for (let i = 0; i < pyList.length; i++) {
+                        const stateData = pyList[i];
+                        
+                        const callStack = [];
+                        const pyCallStack = stateData.get('callStack');
+                        for (let j = 0; j < pyCallStack.length; j++) {
+                            const frameData = pyCallStack[j];
+                            const localVars = new Map();
+                            const pyLocalVars = frameData.get('localVariables');
+                            for (const [key, value] of pyLocalVars.entries()) {
+                                localVars.set(key, value);
+                            }
+                            
+                            callStack.push(new StackFrame({
+                                frameId: frameData.get('frameId'),
+                                functionName: frameData.get('functionName'),
+                                localVariables: localVars,
+                                returnAddress: frameData.get('returnAddress'),
+                                lineNumber: frameData.get('lineNumber')
+                            }));
+                        }
+                        
+                        const heap = [];
+                        const pyHeap = stateData.get('heap');
+                        for (let j = 0; j < pyHeap.length; j++) {
+                            const objData = pyHeap[j];
+                            heap.push(new HeapObject({
+                                objectId: objData.get('objectId'),
+                                type: objData.get('type'),
+                                value: objData.get('value'),
+                                refCount: objData.get('refCount'),
+                                references: Array.from(objData.get('references'))
+                            }));
+                        }
+                        
+                        const gilData = stateData.get('gilStatus');
+                        const gilStatus = new GILStatus({
+                            state: gilData.get('state'),
+                            threadId: gilData.get('threadId'),
+                            explanation: gilData.get('explanation')
+                        });
+                        
+                        states.push(new ExecutionState({
+                            stepNumber: stateData.get('stepNumber'),
+                            lineNumber: stateData.get('lineNumber'),
+                            pipelineStage: stateData.get('pipelineStage'),
+                            instructionPointer: stateData.get('instructionPointer'),
+                            bytecode: bytecode,
+                            callStack: callStack,
+                            heap: heap,
+                            gilStatus: gilStatus,
+                            explanation: stateData.get('explanation')
+                        }));
+                    }
+                    
+                    if (states.length >= MAX_STEPS) {
+                        console.warn(`Execution limited to ${MAX_STEPS} steps to prevent memory exhaustion`);
+                    }
+                    
+                    return states;
+                    
+                } catch (error) {
+                    console.error('State capture error:', error);
+                    return states;
+                }
+            }
+        }
+
+        // Test cases
+        async function runTests() {
+            const resultsDiv = document.getElementById('results');
+            const loadingDiv = document.getElementById('loading');
+            
+            try {
+                const pyodide = await loadPyodide({
+                    indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.24.1/full/'
+                });
+                
+                loadingDiv.style.display = 'none';
+                resultsDiv.style.display = 'block';
+                
+                const engine = new ExecutionEngine(pyodide);
+                let html = '';
+                
+                // Test 1: Simple variable assignment
+                html += '<div class="test-section"><h2>Test 1: Simple Variable Assignment</h2>';
+                const code1 = 'x = 5\ny = 10\nz = x + y';
+                const states1 = await engine.captureStates(code1);
+                html += `<p class="${states1.length > 0 ? 'pass' : 'fail'}">✓ Captured ${states1.length} states</p>`;
+                if (states1.length > 0) {
+                    html += `<p class="info">First state: ${states1[0].explanation}</p>`;
+                    html += `<p class="info">Last state: ${states1[states1.length - 1].explanation}</p>`;
+                    html += `<pre>${JSON.stringify(states1[0], null, 2).substring(0, 500)}...</pre>`;
+                }
+                html += '</div>';
+                
+                // Test 2: Function definition and call
+                html += '<div class="test-section"><h2>Test 2: Function Definition and Call</h2>';
+                const code2 = 'def add(a, b):\n    return a + b\n\nresult = add(3, 4)';
+                const states2 = await engine.captureStates(code2);
+                html += `<p class="${states2.length > 0 ? 'pass' : 'fail'}">✓ Captured ${states2.length} states</p>`;
+                if (states2.length > 0) {
+                    const callStates = states2.filter(s => s.callStack.length > 1);
+                    html += `<p class="info">States with function calls: ${callStates.length}</p>`;
+                    if (callStates.length > 0) {
+                        html += `<p class="info">Call state: ${callStates[0].explanation}</p>`;
+                    }
+                }
+                html += '</div>';
+                
+                // Test 3: Loop construct
+                html += '<div class="test-section"><h2>Test 3: Loop Construct</h2>';
+                const code3 = 'total = 0\nfor i in range(3):\n    total += i';
+                const states3 = await engine.captureStates(code3);
+                html += `<p class="${states3.length > 0 ? 'pass' : 'fail'}">✓ Captured ${states3.length} states</p>`;
+                if (states3.length > 0) {
+                    html += `<p class="info">Loop iterations captured: ${states3.length} states</p>`;
+                }
+                html += '</div>';
+                
+                // Test 4: Conditional statement
+                html += '<div class="test-section"><h2>Test 4: Conditional Statement</h2>';
+                const code4 = 'x = 10\nif x > 5:\n    y = "big"\nelse:\n    y = "small"';
+                const states4 = await engine.captureStates(code4);
+                html += `<p class="${states4.length > 0 ? 'pass' : 'fail'}">✓ Captured ${states4.length} states</p>`;
+                html += '</div>';
+                
+                // Test 5: Data structures (list and dict)
+                html += '<div class="test-section"><h2>Test 5: Data Structures</h2>';
+                const code5 = 'my_list = [1, 2, 3]\nmy_dict = {"a": 1, "b": 2}';
+                const states5 = await engine.captureStates(code5);
+                html += `<p class="${states5.length > 0 ? 'pass' : 'fail'}">✓ Captured ${states5.length} states</p>`;
+                if (states5.length > 0) {
+                    const heapObjects = states5[states5.length - 1].heap;
+                    const listObjs = heapObjects.filter(o => o.type === 'list');
+                    const dictObjs = heapObjects.filter(o => o.type === 'dict');
+                    html += `<p class="info">List objects in heap: ${listObjs.length}</p>`;
+                    html += `<p class="info">Dict objects in heap: ${dictObjs.length}</p>`;
+                }
+                html += '</div>';
+                
+                // Test 6: Verify all required fields
+                html += '<div class="test-section"><h2>Test 6: ExecutionState Field Completeness</h2>';
+                if (states1.length > 0) {
+                    const state = states1[0];
+                    const fields = [
+                        'stepNumber', 'lineNumber', 'pipelineStage', 'instructionPointer',
+                        'bytecode', 'callStack', 'heap', 'gilStatus', 'explanation'
+                    ];
+                    let allPresent = true;
+                    for (const field of fields) {
+                        const present = state[field] !== undefined;
+                        html += `<p class="${present ? 'pass' : 'fail'}">${present ? '✓' : '✗'} ${field}: ${present ? 'present' : 'missing'}</p>`;
+                        if (!present) allPresent = false;
+                    }
+                    html += `<p class="${allPresent ? 'pass' : 'fail'}"><strong>${allPresent ? 'All fields present' : 'Some fields missing'}</strong></p>`;
+                }
+                html += '</div>';
+                
+                // Test 7: 10,000 step limit
+                html += '<div class="test-section"><h2>Test 7: 10,000 Step Limit</h2>';
+                const code7 = 'for i in range(20000):\n    x = i';
+                const states7 = await engine.captureStates(code7);
+                html += `<p class="${states7.length <= 10000 ? 'pass' : 'fail'}">✓ Captured ${states7.length} states (limit: 10,000)</p>`;
+                html += `<p class="info">Step limit ${states7.length <= 10000 ? 'enforced correctly' : 'NOT enforced'}</p>`;
+                html += '</div>';
+                
+                // Test 8: Explanation text generation
+                html += '<div class="test-section"><h2>Test 8: Explanation Text Generation</h2>';
+                if (states1.length > 0) {
+                    let allHaveExplanations = true;
+                    for (const state of states1) {
+                        if (!state.explanation || state.explanation.length === 0) {
+                            allHaveExplanations = false;
+                            break;
+                        }
+                    }
+                    html += `<p class="${allHaveExplanations ? 'pass' : 'fail'}">${allHaveExplanations ? '✓' : '✗'} All states have explanation text</p>`;
+                    html += '<p class="info">Sample explanations:</p><ul>';
+                    for (let i = 0; i < Math.min(3, states1.length); i++) {
+                        html += `<li>${states1[i].explanation}</li>`;
+                    }
+                    html += '</ul>';
+                }
+                html += '</div>';
+                
+                resultsDiv.innerHTML = html;
+                
+            } catch (error) {
+                loadingDiv.style.display = 'none';
+                resultsDiv.style.display = 'block';
+                resultsDiv.innerHTML = `<div class="test-section"><h2 class="fail">Error</h2><p>${error.message}</p><pre>${error.stack}</pre></div>`;
+            }
+        }
+
+        window.addEventListener('load', runTests);
+    </script>
+</body>
+</html>

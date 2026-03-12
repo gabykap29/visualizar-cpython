@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ExecutionEngine Tests</title>
+    <style>
+        body {
+            font-family: monospace;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            padding: 20px;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .pass {
+            background-color: rgba(63, 185, 80, 0.2);
+            border-left: 4px solid #3fb950;
+        }
+        .fail {
+            background-color: rgba(248, 81, 73, 0.2);
+            border-left: 4px solid #f85149;
+        }
+        h1 {
+            color: #58a6ff;
+        }
+        h2 {
+            color: #58a6ff;
+            margin-top: 30px;
+        }
+        .summary {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: rgba(88, 166, 255, 0.1);
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body>
+    <h1>ExecutionEngine Unit Tests</h1>
+    <div id="test-results"></div>
+    <div id="summary" class="summary"></div>
+
+    <!-- Pyodide -->
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+
+    <script>
+        // ExecutionEngine class (copied from main application)
+        class ExecutionEngine {
+            constructor(pyodideInstance) {
+                this.pyodide = pyodideInstance;
+                this.states = [];
+                this.currentIndex = 0;
+            }
+            
+            async compile(sourceCode) {
+                try {
+                    // Attempt to compile the Python code using Pyodide
+                    await this.pyodide.runPythonAsync(`
+import ast
+import sys
+
+# Attempt to parse the source code to check for syntax errors
+try:
+    ast.parse("""${sourceCode.replace(/"/g, '\\"').replace(/\n/g, '\\n')}""")
+except SyntaxError as e:
+    raise e
+                    `);
+                    
+                    return {
+                        success: true,
+                        states: [],
+                        error: null
+                    };
+                    
+                } catch (error) {
+                    const errorMessage = error.message || 'Unknown compilation error';
+                    
+                    return {
+                        success: false,
+                        states: [],
+                        error: `Compilation Error: ${errorMessage}\n\nPlease check your Python syntax and try again.`
+                    };
+                }
+            }
+        }
+
+        // Test utilities
+        const testResults = [];
+        
+        function logTest(name, passed, message = '') {
+            testResults.push({ name, passed, message });
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${passed ? 'pass' : 'fail'}`;
+            resultDiv.innerHTML = `
+                <strong>${passed ? '✓' : '✗'} ${name}</strong>
+                ${message ? `<br><span style="color: #8b949e;">${message}</span>` : ''}
+            `;
+            document.getElementById('test-results').appendChild(resultDiv);
+        }
+
+        // Test suite
+        async function runTests() {
+            console.log('Loading Pyodide...');
+            const pyodide = await loadPyodide({
+                indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.24.1/full/'
+            });
+            console.log('Pyodide loaded successfully');
+
+            const engine = new ExecutionEngine(pyodide);
+
+            // Test 1: Constructor initializes with pyodide parameter
+            console.log('Test 1: Constructor initialization');
+            try {
+                const testEngine = new ExecutionEngine(pyodide);
+                const hasCorrectProperties = 
+                    testEngine.pyodide === pyodide &&
+                    Array.isArray(testEngine.states) &&
+                    testEngine.currentIndex === 0;
+                
+                logTest(
+                    'Constructor initializes with pyodide parameter',
+                    hasCorrectProperties,
+                    'ExecutionEngine should store pyodide instance and initialize states array'
+                );
+            } catch (error) {
+                logTest('Constructor initializes with pyodide parameter', false, error.message);
+            }
+
+            // Test 2: Compile method returns success for valid Python code
+            console.log('Test 2: Valid Python code compilation');
+            try {
+                const result = await engine.compile('x = 5\nprint(x)');
+                const isValid = 
+                    result.success === true &&
+                    Array.isArray(result.states) &&
+                    result.error === null;
+                
+                logTest(
+                    'Compile returns success for valid Python code',
+                    isValid,
+                    `Result: success=${result.success}, error=${result.error}`
+                );
+            } catch (error) {
+                logTest('Compile returns success for valid Python code', false, error.message);
+            }
+
+            // Test 3: Compile method catches SyntaxError for invalid code
+            console.log('Test 3: Invalid Python code compilation');
+            try {
+                const result = await engine.compile('def invalid syntax:');
+                const isValid = 
+                    result.success === false &&
+                    Array.isArray(result.states) &&
+                    result.states.length === 0 &&
+                    typeof result.error === 'string' &&
+                    result.error.includes('Compilation Error');
+                
+                logTest(
+                    'Compile catches SyntaxError and returns error result',
+                    isValid,
+                    `Result: success=${result.success}, error present=${result.error !== null}`
+                );
+            } catch (error) {
+                logTest('Compile catches SyntaxError and returns error result', false, error.message);
+            }
+
+            // Test 4: Error message is descriptive
+            console.log('Test 4: Descriptive error messages');
+            try {
+                const result = await engine.compile('if True\nprint("missing colon")');
+                const hasDescriptiveError = 
+                    result.error &&
+                    result.error.includes('Compilation Error') &&
+                    result.error.includes('Please check your Python syntax');
+                
+                logTest(
+                    'Error message is descriptive and user-friendly',
+                    hasDescriptiveError,
+                    `Error message: ${result.error ? result.error.substring(0, 100) : 'none'}`
+                );
+            } catch (error) {
+                logTest('Error message is descriptive and user-friendly', false, error.message);
+            }
+
+            // Test 5: Compile handles empty code
+            console.log('Test 5: Empty code handling');
+            try {
+                const result = await engine.compile('');
+                const isValid = result.success === true;
+                
+                logTest(
+                    'Compile handles empty code gracefully',
+                    isValid,
+                    `Result: success=${result.success}`
+                );
+            } catch (error) {
+                logTest('Compile handles empty code gracefully', false, error.message);
+            }
+
+            // Test 6: Compile handles multiline code
+            console.log('Test 6: Multiline code compilation');
+            try {
+                const multilineCode = `def factorial(n):
+    if n <= 1:
+        return 1
+    return n * factorial(n - 1)
+
+result = factorial(5)`;
+                const result = await engine.compile(multilineCode);
+                const isValid = result.success === true;
+                
+                logTest(
+                    'Compile handles multiline code correctly',
+                    isValid,
+                    `Result: success=${result.success}`
+                );
+            } catch (error) {
+                logTest('Compile handles multiline code correctly', false, error.message);
+            }
+
+            // Test 7: Compile handles code with special characters
+            console.log('Test 7: Special characters in code');
+            try {
+                const codeWithSpecialChars = `message = "Hello, 'world'!"\nprint(message)`;
+                const result = await engine.compile(codeWithSpecialChars);
+                const isValid = result.success === true;
+                
+                logTest(
+                    'Compile handles code with quotes and special characters',
+                    isValid,
+                    `Result: success=${result.success}`
+                );
+            } catch (error) {
+                logTest('Compile handles code with quotes and special characters', false, error.message);
+            }
+
+            // Test 8: Result structure is consistent
+            console.log('Test 8: Result structure consistency');
+            try {
+                const validResult = await engine.compile('x = 1');
+                const invalidResult = await engine.compile('invalid syntax');
+                
+                const hasConsistentStructure = 
+                    validResult.hasOwnProperty('success') &&
+                    validResult.hasOwnProperty('states') &&
+                    validResult.hasOwnProperty('error') &&
+                    invalidResult.hasOwnProperty('success') &&
+                    invalidResult.hasOwnProperty('states') &&
+                    invalidResult.hasOwnProperty('error');
+                
+                logTest(
+                    'Compile result has consistent structure for both success and failure',
+                    hasConsistentStructure,
+                    'Result should always have success, states, and error properties'
+                );
+            } catch (error) {
+                logTest('Compile result has consistent structure', false, error.message);
+            }
+
+            // Display summary
+            const passed = testResults.filter(r => r.passed).length;
+            const total = testResults.length;
+            const summaryDiv = document.getElementById('summary');
+            summaryDiv.innerHTML = `
+                <h2>Test Summary</h2>
+                <p><strong>Total Tests:</strong> ${total}</p>
+                <p><strong>Passed:</strong> ${passed}</p>
+                <p><strong>Failed:</strong> ${total - passed}</p>
+                <p><strong>Success Rate:</strong> ${((passed / total) * 100).toFixed(1)}%</p>
+            `;
+
+            console.log('All tests completed');
+            console.log(`Passed: ${passed}/${total}`);
+        }
+
+        // Run tests when page loads
+        window.addEventListener('load', () => {
+            setTimeout(runTests, 100);
+        });
+    </script>
+</body>
+</html>

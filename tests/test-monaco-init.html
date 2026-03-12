@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Monaco Editor Initialization - Task 5.1</title>
+    <style>
+        body {
+            font-family: monospace;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            padding: 20px;
+        }
+        
+        .test-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+        }
+        
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        
+        .pass {
+            background-color: rgba(63, 185, 80, 0.1);
+            border: 1px solid #3fb950;
+            color: #3fb950;
+        }
+        
+        .fail {
+            background-color: rgba(248, 81, 73, 0.1);
+            border: 1px solid #f85149;
+            color: #f85149;
+        }
+        
+        h1 {
+            color: #58a6ff;
+        }
+        
+        h2 {
+            color: #58a6ff;
+            font-size: 18px;
+        }
+        
+        iframe {
+            width: 100%;
+            height: 600px;
+            border: 2px solid #58a6ff;
+            border-radius: 6px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Task 5.1: Monaco Editor Initialization Test</h1>
+    
+    <div class="test-section">
+        <h2>Test Criteria</h2>
+        <p>This test verifies that Monaco Editor is properly initialized with:</p>
+        <ul>
+            <li>DOM container occupying 30% of viewport width</li>
+            <li>Python language mode enabled</li>
+            <li>Dark theme applied</li>
+            <li>Syntax highlighting configured</li>
+            <li>Line numbers displayed</li>
+        </ul>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test Results</h2>
+        <div id="test-results">
+            <p>Running tests...</p>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Visual Verification</h2>
+        <p>The application should load below with Monaco Editor visible in the left panel (30% width):</p>
+        <iframe id="app-frame" src="index.html"></iframe>
+    </div>
+    
+    <script>
+        // Wait for iframe to load
+        const iframe = document.getElementById('app-frame');
+        const resultsDiv = document.getElementById('test-results');
+        
+        iframe.addEventListener('load', function() {
+            setTimeout(function() {
+                try {
+                    const iframeWindow = iframe.contentWindow;
+                    const iframeDoc = iframe.contentDocument;
+                    
+                    const tests = [];
+                    
+                    // Test 1: Monaco container exists
+                    const monacoContainer = iframeDoc.getElementById('monaco-container');
+                    tests.push({
+                        name: 'Monaco container exists',
+                        passed: monacoContainer !== null,
+                        details: monacoContainer ? 'Container found' : 'Container not found'
+                    });
+                    
+                    // Test 2: Monaco container has correct width (30%)
+                    if (monacoContainer) {
+                        const containerWidth = monacoContainer.offsetWidth;
+                        const viewportWidth = iframeWindow.innerWidth;
+                        const widthPercentage = (containerWidth / viewportWidth) * 100;
+                        const isCorrectWidth = Math.abs(widthPercentage - 30) < 2; // Allow 2% tolerance
+                        tests.push({
+                            name: 'Monaco container width is 30% of viewport',
+                            passed: isCorrectWidth,
+                            details: `Width: ${widthPercentage.toFixed(1)}% (expected: 30%)`
+                        });
+                    }
+                    
+                    // Test 3: Monaco editor instance exists
+                    const editorExists = typeof iframeWindow.monacoEditor !== 'undefined';
+                    tests.push({
+                        name: 'Monaco editor instance created',
+                        passed: editorExists,
+                        details: editorExists ? 'Editor instance found in window.monacoEditor' : 'Editor instance not found'
+                    });
+                    
+                    // Test 4: Monaco editor has Python language mode
+                    if (editorExists && iframeWindow.monacoEditor) {
+                        const model = iframeWindow.monacoEditor.getModel();
+                        const language = model ? model.getLanguageId() : null;
+                        tests.push({
+                            name: 'Monaco editor uses Python language mode',
+                            passed: language === 'python',
+                            details: `Language: ${language || 'unknown'} (expected: python)`
+                        });
+                    }
+                    
+                    // Test 5: Monaco editor has dark theme
+                    if (editorExists && iframeWindow.monacoEditor) {
+                        const options = iframeWindow.monacoEditor.getOptions();
+                        const theme = options.get(iframeWindow.monaco.editor.EditorOption.theme);
+                        tests.push({
+                            name: 'Monaco editor uses dark theme',
+                            passed: theme === 'vs-dark',
+                            details: `Theme: ${theme} (expected: vs-dark)`
+                        });
+                    }
+                    
+                    // Test 6: Line numbers are enabled
+                    if (editorExists && iframeWindow.monacoEditor) {
+                        const options = iframeWindow.monacoEditor.getOptions();
+                        const lineNumbers = options.get(iframeWindow.monaco.editor.EditorOption.lineNumbers);
+                        const lineNumbersEnabled = lineNumbers && lineNumbers.renderType !== 0; // 0 = off
+                        tests.push({
+                            name: 'Line numbers are enabled',
+                            passed: lineNumbersEnabled,
+                            details: lineNumbersEnabled ? 'Line numbers enabled' : 'Line numbers disabled'
+                        });
+                    }
+                    
+                    // Test 7: Syntax highlighting is configured
+                    if (editorExists && iframeWindow.monacoEditor) {
+                        // Check if Monaco has loaded the Python language
+                        const languages = iframeWindow.monaco.languages.getLanguages();
+                        const pythonLanguage = languages.find(lang => lang.id === 'python');
+                        tests.push({
+                            name: 'Python syntax highlighting configured',
+                            passed: pythonLanguage !== undefined,
+                            details: pythonLanguage ? 'Python language support loaded' : 'Python language support not found'
+                        });
+                    }
+                    
+                    // Display results
+                    let html = '';
+                    let passCount = 0;
+                    let failCount = 0;
+                    
+                    tests.forEach(test => {
+                        if (test.passed) {
+                            passCount++;
+                            html += `<div class="test-result pass">✓ ${test.name}<br><small>${test.details}</small></div>`;
+                        } else {
+                            failCount++;
+                            html += `<div class="test-result fail">✗ ${test.name}<br><small>${test.details}</small></div>`;
+                        }
+                    });
+                    
+                    html = `<h3>Summary: ${passCount} passed, ${failCount} failed</h3>` + html;
+                    resultsDiv.innerHTML = html;
+                    
+                } catch (error) {
+                    resultsDiv.innerHTML = `<div class="test-result fail">Error running tests: ${error.message}</div>`;
+                }
+            }, 3000); // Wait 3 seconds for Monaco and Pyodide to load
+        });
+    </script>
+</body>
+</html>

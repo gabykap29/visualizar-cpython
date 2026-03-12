@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task 12.1 Verification - Control Bar HTML & CSS</title>
+    
+    <!-- Application Styles -->
+    <link rel="stylesheet" href="../src/styles/main.css">
+    
+    <style>
+        /* Test page specific styles */
+        body {
+            padding: 20px;
+            overflow: auto;
+        }
+        
+        #test-results {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 400px;
+            max-height: 80vh;
+            overflow-y: auto;
+            background-color: rgba(13, 17, 23, 0.95);
+            border: 2px solid var(--accent-color);
+            border-radius: 8px;
+            padding: 20px;
+            z-index: 10000;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+        }
+        
+        #test-results h2 {
+            color: var(--accent-color);
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        #test-output {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .test-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+        }
+        
+        .test-section h3 {
+            color: var(--accent-color);
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        
+        .test-pass {
+            color: var(--success-color);
+        }
+        
+        .test-fail {
+            color: var(--error-color);
+        }
+        
+        #app-container {
+            height: 600px;
+        }
+        
+        #monaco-container {
+            background-color: rgba(255, 255, 255, 0.03);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(201, 209, 217, 0.5);
+        }
+        
+        .info-banner {
+            background-color: rgba(88, 166, 255, 0.1);
+            border: 1px solid var(--accent-color);
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .info-banner h3 {
+            color: var(--accent-color);
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+        
+        .info-banner ul {
+            margin-left: 20px;
+            line-height: 1.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="info-banner">
+        <h3>Task 12.1 Verification: Control Bar HTML Structure and CSS</h3>
+        <p>This test page verifies the implementation of the Control Bar component:</p>
+        <ul>
+            <li>✓ Control Bar HTML structure with all 5 buttons</li>
+            <li>✓ Speed slider with range 0.5x to 3x</li>
+            <li>✓ Dark theme styling with accent colors</li>
+            <li>✓ Button states (normal, hover, active, disabled)</li>
+            <li>✓ Smooth 300ms transitions</li>
+            <li>✓ Requirements 8.1, 8.2, 8.3, 8.4, 8.5, 9.1</li>
+        </ul>
+        <p><strong>Check the test results panel on the right and inspect the Control Bar at the bottom of the right panel.</strong></p>
+    </div>
+    
+    <!-- Test Results Panel -->
+    <div id="test-results">
+        <h2>Test Results</h2>
+        <div id="test-output">Running tests...</div>
+    </div>
+    
+    <!-- Main Application Structure (simplified for testing) -->
+    <div id="app" style="display: block;">
+        <div id="app-container">
+            <!-- Monaco Editor Container (30% width, left panel) -->
+            <div id="monaco-container">
+                <p>Monaco Editor Placeholder</p>
+            </div>
+            
+            <!-- Right Panel (70% width, contains visualizations) -->
+            <div id="right-panel">
+                <!-- GIL Indicator (top-right, 200px width, 40px height) -->
+                <div id="gil-indicator" class="gil-released" data-tooltip="The Global Interpreter Lock (GIL) is a mutex that protects access to Python objects.">
+                    <div class="gil-icon">🔒</div>
+                    <div class="gil-info">
+                        <div class="gil-state">RELEASED</div>
+                        <div class="gil-thread">Thread: -1</div>
+                    </div>
+                </div>
+                
+                <!-- Pipeline Diagram (center-top region, 70% width, 20% height) -->
+                <div id="pipeline-diagram">
+                    <div class="pipeline-container">
+                        <div class="pipeline-stage" data-stage="source">
+                            <div class="pipeline-stage-icon">📝</div>
+                            <div class="pipeline-stage-name">Source Code</div>
+                        </div>
+                        <div class="pipeline-arrow">→</div>
+                        <div class="pipeline-stage active" data-stage="tokenizer">
+                            <div class="pipeline-stage-icon">🔤</div>
+                            <div class="pipeline-stage-name">Tokenizer</div>
+                        </div>
+                        <div class="pipeline-arrow">→</div>
+                        <div class="pipeline-stage" data-stage="parser">
+                            <div class="pipeline-stage-icon">🌳</div>
+                            <div class="pipeline-stage-name">Parser (AST)</div>
+                        </div>
+                        <div class="pipeline-arrow">→</div>
+                        <div class="pipeline-stage" data-stage="compiler">
+                            <div class="pipeline-stage-icon">⚙️</div>
+                            <div class="pipeline-stage-name">Compiler</div>
+                        </div>
+                        <div class="pipeline-arrow">→</div>
+                        <div class="pipeline-stage" data-stage="bytecode">
+                            <div class="pipeline-stage-icon">💾</div>
+                            <div class="pipeline-stage-name">Bytecode</div>
+                        </div>
+                        <div class="pipeline-arrow">→</div>
+                        <div class="pipeline-stage" data-stage="pvm">
+                            <div class="pipeline-stage-icon">🚀</div>
+                            <div class="pipeline-stage-name">PVM</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Visualization Panels Container (below pipeline, 80% height) -->
+                <div id="visualization-panels">
+                    <!-- Bytecode Panel (center-left, 35% width, 60% height) -->
+                    <div id="bytecode-panel" class="visualization-panel">
+                        <div class="panel-header">
+                            <h3 class="panel-title">Bytecode</h3>
+                            <span class="panel-subtitle">Compiled Instructions</span>
+                        </div>
+                        <div class="panel-content" id="bytecode-content">
+                            <div class="bytecode-placeholder">
+                                <p>No bytecode generated yet</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Stack Panel (center-center, 35% width, 60% height) -->
+                    <div id="stack-panel" class="visualization-panel">
+                        <div class="panel-header">
+                            <h3 class="panel-title">Call Stack</h3>
+                            <span class="panel-subtitle">Function Frames</span>
+                        </div>
+                        <div class="panel-content" id="stack-content">
+                            <div class="stack-placeholder">
+                                <div class="stack-empty-icon">📚</div>
+                                <p class="stack-empty-text">No stack frames yet</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Memory Panel (right, 30% width, 80% height) -->
+                    <div id="memory-panel" class="visualization-panel">
+                        <div class="panel-header">
+                            <h3 class="panel-title">Memory Heap</h3>
+                            <span class="panel-subtitle">Objects & References</span>
+                        </div>
+                        <div class="panel-content" id="memory-content">
+                            <svg id="memory-arrows" class="memory-arrows-overlay"></svg>
+                            <div id="memory-objects-container">
+                                <div class="memory-placeholder">
+                                    <div class="memory-empty-icon">🧠</div>
+                                    <p class="memory-empty-text">No objects allocated yet</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Control Bar (bottom-center, 70% width, 20% height) -->
+                <div id="control-bar">
+                    <div class="control-bar-container">
+                        <!-- Execution Control Buttons -->
+                        <div class="control-buttons">
+                            <button id="btn-step-back" class="control-btn" title="Step Back (Previous instruction)" disabled>
+                                <span class="control-btn-icon">←</span>
+                                <span class="control-btn-label">Step Back</span>
+                            </button>
+                            
+                            <button id="btn-step-forward" class="control-btn" title="Step Forward (Next instruction)" disabled>
+                                <span class="control-btn-icon">→</span>
+                                <span class="control-btn-label">Step Forward</span>
+                            </button>
+                            
+                            <button id="btn-auto-play" class="control-btn" title="Auto-play execution" disabled>
+                                <span class="control-btn-icon">▶</span>
+                                <span class="control-btn-label">Auto-play</span>
+                            </button>
+                            
+                            <button id="btn-reset" class="control-btn" title="Reset to beginning" disabled>
+                                <span class="control-btn-icon">↻</span>
+                                <span class="control-btn-label">Reset</span>
+                            </button>
+                            
+                            <button id="btn-explain" class="control-btn" title="Explain this step" disabled>
+                                <span class="control-btn-icon">?</span>
+                                <span class="control-btn-label">Explain</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Speed Control Slider -->
+                        <div class="speed-control">
+                            <label for="speed-slider" class="speed-label">Speed:</label>
+                            <div class="speed-slider-container">
+                                <span class="speed-value-label">0.5x</span>
+                                <input 
+                                    type="range" 
+                                    id="speed-slider" 
+                                    class="speed-slider" 
+                                    min="0.5" 
+                                    max="3" 
+                                    step="0.1" 
+                                    value="1"
+                                    title="Adjust auto-play speed"
+                                />
+                                <span class="speed-value-label">3x</span>
+                            </div>
+                            <span id="speed-display" class="speed-display">1.0x</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Verification Test Script -->
+    <script src="verify-task-12.1.js"></script>
+    
+    <script>
+        // Override console methods to capture output
+        const testOutput = document.getElementById('test-output');
+        const originalLog = console.log;
+        const originalError = console.error;
+        
+        let outputBuffer = '';
+        
+        console.log = function(...args) {
+            const message = args.join(' ');
+            outputBuffer += message + '\n';
+            originalLog.apply(console, args);
+        };
+        
+        console.error = function(...args) {
+            const message = args.join(' ');
+            outputBuffer += message + '\n';
+            originalError.apply(console, args);
+        };
+        
+        // Run tests and display results
+        setTimeout(() => {
+            const results = runAllTests();
+            
+            // Display captured output
+            testOutput.innerHTML = outputBuffer;
+            
+            // Add interactive demo for speed slider
+            const speedSlider = document.getElementById('speed-slider');
+            const speedDisplay = document.getElementById('speed-display');
+            
+            if (speedSlider && speedDisplay) {
+                speedSlider.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    speedDisplay.textContent = value.toFixed(1) + 'x';
+                });
+            }
+            
+            // Add interactive demo for buttons (enable them for testing hover states)
+            setTimeout(() => {
+                const buttons = document.querySelectorAll('.control-btn');
+                buttons.forEach(btn => {
+                    btn.removeAttribute('disabled');
+                    btn.addEventListener('click', () => {
+                        console.log(`Button clicked: ${btn.id}`);
+                    });
+                });
+                
+                // Add playing state to auto-play button on click
+                const btnAutoPlay = document.getElementById('btn-auto-play');
+                if (btnAutoPlay) {
+                    btnAutoPlay.addEventListener('click', () => {
+                        btnAutoPlay.classList.toggle('playing');
+                        const icon = btnAutoPlay.querySelector('.control-btn-icon');
+                        if (btnAutoPlay.classList.contains('playing')) {
+                            icon.textContent = '⏸';
+                        } else {
+                            icon.textContent = '▶';
+                        }
+                    });
+                }
+            }, 2000);
+        }, 200);
+    </script>
+</body>
+</html>

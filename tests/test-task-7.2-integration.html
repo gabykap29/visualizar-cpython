@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task 7.2 Integration Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            padding: 20px;
+            margin: 0;
+        }
+        
+        h1 { color: #58a6ff; }
+        
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+        }
+        
+        .test-section h2 {
+            color: #58a6ff;
+            margin-top: 0;
+        }
+        
+        .controls {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background-color: #58a6ff;
+            color: #ffffff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        
+        button:hover {
+            background-color: #4a8fd9;
+        }
+        
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+        
+        .status.pass {
+            background-color: rgba(63, 185, 80, 0.15);
+            border: 1px solid #3fb950;
+            color: #3fb950;
+        }
+        
+        .status.fail {
+            background-color: rgba(248, 81, 73, 0.15);
+            border: 1px solid #f85149;
+            color: #f85149;
+        }
+        
+        /* Bytecode panel styles */
+        .visualization-panel {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 400px;
+        }
+        
+        .panel-header {
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .panel-title {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .panel-content {
+            flex: 1;
+            overflow-y: auto;
+        }
+        
+        #bytecode-content {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        
+        .bytecode-instruction {
+            display: flex;
+            align-items: center;
+            padding: 6px 8px;
+            margin: 2px 0;
+            border-radius: 4px;
+            transition: all 300ms ease-in-out;
+        }
+        
+        .bytecode-instruction.active {
+            background-color: rgba(88, 166, 255, 0.2);
+            border-left: 3px solid #58a6ff;
+            padding-left: 5px;
+        }
+        
+        .bytecode-offset {
+            color: rgba(201, 209, 217, 0.5);
+            font-size: 11px;
+            min-width: 40px;
+            text-align: right;
+            margin-right: 12px;
+            font-weight: 600;
+        }
+        
+        .bytecode-opname {
+            color: #58a6ff;
+            font-weight: 600;
+            min-width: 120px;
+            margin-right: 12px;
+        }
+        
+        .bytecode-instruction.active .bytecode-opname {
+            color: #ffffff;
+        }
+        
+        .bytecode-arg {
+            color: rgba(201, 209, 217, 0.7);
+            font-style: italic;
+        }
+        
+        .bytecode-lineno {
+            color: rgba(201, 209, 217, 0.4);
+            font-size: 10px;
+            margin-left: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Task 7.2 Integration Test</h1>
+    <p>Testing bytecode rendering with instruction pointer highlighting</p>
+    
+    <div class="test-section">
+        <h2>Interactive Test</h2>
+        <p>Use the buttons below to step through bytecode instructions:</p>
+        
+        <div class="controls">
+            <button onclick="stepToInstruction(0)">Step to Offset 0</button>
+            <button onclick="stepToInstruction(4)">Step to Offset 4</button>
+            <button onclick="stepToInstruction(8)">Step to Offset 8</button>
+            <button onclick="stepToInstruction(12)">Step to Offset 12</button>
+            <button onclick="stepToInstruction(16)">Step to Offset 16</button>
+        </div>
+        
+        <div id="status" class="status">Ready</div>
+        
+        <div id="bytecode-panel" class="visualization-panel">
+            <div class="panel-header">
+                <h3 class="panel-title">Bytecode</h3>
+            </div>
+            <div class="panel-content" id="bytecode-content">
+                <p>Loading...</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Validation Results</h2>
+        <div id="validation-results"></div>
+    </div>
+    
+    <script>
+        // Sample bytecode for testing
+        const testBytecode = [
+            { offset: 0, opname: 'LOAD_CONST', arg: 0, argval: 5, lineno: 1 },
+            { offset: 2, opname: 'STORE_NAME', arg: 0, argval: 'x', lineno: 1 },
+            { offset: 4, opname: 'LOAD_CONST', arg: 1, argval: 10, lineno: 2 },
+            { offset: 6, opname: 'STORE_NAME', arg: 1, argval: 'y', lineno: 2 },
+            { offset: 8, opname: 'LOAD_NAME', arg: 0, argval: 'x', lineno: 3 },
+            { offset: 10, opname: 'LOAD_NAME', arg: 1, argval: 'y', lineno: 3 },
+            { offset: 12, opname: 'BINARY_ADD', arg: null, argval: null, lineno: 3 },
+            { offset: 14, opname: 'STORE_NAME', arg: 2, argval: 'result', lineno: 3 },
+            { offset: 16, opname: 'LOAD_CONST', arg: 2, argval: null, lineno: 3 },
+            { offset: 18, opname: 'RETURN_VALUE', arg: null, argval: null, lineno: 3 }
+        ];
+        
+        // AnimationManager implementation (copied from index.html)
+        class AnimationManager {
+            constructor(panels) {
+                this.bytecodePanel = panels.bytecodePanel;
+            }
+            
+            updateBytecodePointer(instructionPointer, bytecode = []) {
+                if (!this.bytecodePanel) {
+                    console.warn('Bytecode panel not available');
+                    return;
+                }
+                
+                const bytecodeContent = this.bytecodePanel.querySelector('#bytecode-content');
+                if (!bytecodeContent) {
+                    console.warn('Bytecode content element not found');
+                    return;
+                }
+                
+                if (!bytecode || bytecode.length === 0) {
+                    bytecodeContent.innerHTML = '<p>No bytecode available</p>';
+                    return;
+                }
+                
+                let html = '';
+                for (const instruction of bytecode) {
+                    const isActive = instruction.offset === instructionPointer;
+                    const activeClass = isActive ? 'active' : '';
+                    
+                    let argDisplay = '';
+                    if (instruction.arg !== null && instruction.arg !== undefined) {
+                        if (instruction.argval !== null && instruction.argval !== undefined && 
+                            instruction.argval !== instruction.arg) {
+                            argDisplay = `${instruction.arg} (${instruction.argval})`;
+                        } else {
+                            argDisplay = `${instruction.arg}`;
+                        }
+                    }
+                    
+                    html += `
+                        <div class="bytecode-instruction ${activeClass}" data-offset="${instruction.offset}">
+                            <span class="bytecode-offset">${instruction.offset}</span>
+                            <span class="bytecode-opname">${instruction.opname}</span>
+                            <span class="bytecode-arg">${argDisplay}</span>
+                            <span class="bytecode-lineno">line ${instruction.lineno}</span>
+                        </div>
+                    `;
+                }
+                
+                bytecodeContent.innerHTML = html;
+                
+                if (instructionPointer !== null && instructionPointer !== undefined) {
+                    const activeInstruction = bytecodeContent.querySelector('.bytecode-instruction.active');
+                    if (activeInstruction) {
+                        activeInstruction.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }
+            }
+        }
+        
+        // Initialize
+        const bytecodePanel = document.getElementById('bytecode-panel');
+        const animationManager = new AnimationManager({ bytecodePanel });
+        
+        // Initial render
+        animationManager.updateBytecodePointer(0, testBytecode);
+        
+        function stepToInstruction(offset) {
+            animationManager.updateBytecodePointer(offset, testBytecode);
+            document.getElementById('status').textContent = `Stepped to instruction at offset ${offset}`;
+            document.getElementById('status').className = 'status pass';
+            
+            // Run validation
+            runValidation(offset);
+        }
+        
+        function runValidation(expectedOffset) {
+            const results = [];
+            const bytecodeContent = document.getElementById('bytecode-content');
+            
+            // Check all instructions are rendered
+            const instructions = bytecodeContent.querySelectorAll('.bytecode-instruction');
+            results.push({
+                test: 'All instructions rendered',
+                passed: instructions.length === testBytecode.length,
+                details: `Expected ${testBytecode.length}, got ${instructions.length}`
+            });
+            
+            // Check correct instruction is active
+            const activeInstructions = bytecodeContent.querySelectorAll('.bytecode-instruction.active');
+            results.push({
+                test: 'Only one instruction active',
+                passed: activeInstructions.length === 1,
+                details: `Found ${activeInstructions.length} active instructions`
+            });
+            
+            if (activeInstructions.length === 1) {
+                const activeOffset = parseInt(activeInstructions[0].getAttribute('data-offset'));
+                results.push({
+                    test: 'Correct instruction highlighted',
+                    passed: activeOffset === expectedOffset,
+                    details: `Expected offset ${expectedOffset}, got ${activeOffset}`
+                });
+            }
+            
+            // Check all instructions have required elements
+            let allHaveElements = true;
+            instructions.forEach(inst => {
+                if (!inst.querySelector('.bytecode-offset') ||
+                    !inst.querySelector('.bytecode-opname') ||
+                    !inst.querySelector('.bytecode-arg') ||
+                    !inst.querySelector('.bytecode-lineno')) {
+                    allHaveElements = false;
+                }
+            });
+            results.push({
+                test: 'All instructions have required elements',
+                passed: allHaveElements,
+                details: allHaveElements ? 'All elements present' : 'Some elements missing'
+            });
+            
+            displayValidationResults(results);
+        }
+        
+        function displayValidationResults(results) {
+            const container = document.getElementById('validation-results');
+            container.innerHTML = '';
+            
+            results.forEach(result => {
+                const div = document.createElement('div');
+                div.className = `status ${result.passed ? 'pass' : 'fail'}`;
+                div.innerHTML = `
+                    <strong>${result.passed ? '✓' : '✗'} ${result.test}</strong><br>
+                    ${result.details}
+                `;
+                container.appendChild(div);
+            });
+        }
+        
+        // Run initial validation
+        runValidation(0);
+    </script>
+</body>
+</html>

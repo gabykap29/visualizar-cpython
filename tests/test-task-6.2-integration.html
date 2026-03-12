@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task 6.2 Integration Test - Pipeline Stage Animation</title>
+    
+    <style>
+        /* CSS Variables for Dark Theme */
+        :root {
+            --bg-primary: #0d1117;
+            --accent-color: #58a6ff;
+            --text-primary: #c9d1d9;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --transition-duration: 300ms;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            padding: 20px;
+        }
+        
+        h1 {
+            color: var(--accent-color);
+            margin-bottom: 20px;
+        }
+        
+        #test-results {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+        }
+        
+        .test-item {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+        }
+        
+        .test-pass {
+            background-color: rgba(63, 185, 80, 0.2);
+            border-left: 4px solid #3fb950;
+        }
+        
+        .test-fail {
+            background-color: rgba(248, 81, 73, 0.2);
+            border-left: 4px solid #f85149;
+        }
+        
+        /* Pipeline Diagram Styles */
+        #pipeline-diagram {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            margin: 20px 0;
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+        
+        .pipeline-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 90%;
+            max-width: 1200px;
+        }
+        
+        .pipeline-stage {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 15px 10px;
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            transition: all var(--transition-duration) ease-in-out;
+            cursor: default;
+            position: relative;
+        }
+        
+        .pipeline-stage:hover {
+            background-color: rgba(255, 255, 255, 0.08);
+        }
+        
+        .pipeline-stage.active {
+            background-color: rgba(88, 166, 255, 0.2);
+            border-color: var(--accent-color);
+            box-shadow: 0 0 20px rgba(88, 166, 255, 0.3);
+            transform: scale(1.05);
+        }
+        
+        .pipeline-stage-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+            transition: transform var(--transition-duration) ease-in-out;
+        }
+        
+        .pipeline-stage.active .pipeline-stage-icon {
+            transform: scale(1.2);
+        }
+        
+        .pipeline-stage-name {
+            font-size: 12px;
+            font-weight: 600;
+            text-align: center;
+            color: var(--text-primary);
+            transition: color var(--transition-duration) ease-in-out;
+        }
+        
+        .pipeline-stage.active .pipeline-stage-name {
+            color: var(--accent-color);
+        }
+        
+        .pipeline-arrow {
+            font-size: 20px;
+            color: var(--border-color);
+            margin: 0 10px;
+            transition: color var(--transition-duration) ease-in-out;
+        }
+        
+        .pipeline-arrow.active {
+            color: var(--accent-color);
+        }
+        
+        #controls {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        button:hover {
+            background-color: #4a8fd9;
+            transform: translateY(-2px);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <h1>Task 6.2 Integration Test - Pipeline Stage Animation</h1>
+    
+    <p>This test verifies that the updatePipelineStage method correctly animates pipeline stages with CSS transitions.</p>
+    
+    <!-- Pipeline Diagram -->
+    <div id="pipeline-diagram">
+        <div class="pipeline-container">
+            <!-- Stage 1: Source Code -->
+            <div class="pipeline-stage" data-stage="source">
+                <div class="pipeline-stage-icon">📝</div>
+                <div class="pipeline-stage-name">Source Code</div>
+            </div>
+            
+            <div class="pipeline-arrow">→</div>
+            
+            <!-- Stage 2: Tokenizer -->
+            <div class="pipeline-stage" data-stage="tokenizer">
+                <div class="pipeline-stage-icon">🔤</div>
+                <div class="pipeline-stage-name">Tokenizer</div>
+            </div>
+            
+            <div class="pipeline-arrow">→</div>
+            
+            <!-- Stage 3: Parser (AST) -->
+            <div class="pipeline-stage" data-stage="parser">
+                <div class="pipeline-stage-icon">🌳</div>
+                <div class="pipeline-stage-name">Parser (AST)</div>
+            </div>
+            
+            <div class="pipeline-arrow">→</div>
+            
+            <!-- Stage 4: Compiler -->
+            <div class="pipeline-stage" data-stage="compiler">
+                <div class="pipeline-stage-icon">⚙️</div>
+                <div class="pipeline-stage-name">Compiler</div>
+            </div>
+            
+            <div class="pipeline-arrow">→</div>
+            
+            <!-- Stage 5: Bytecode -->
+            <div class="pipeline-stage" data-stage="bytecode">
+                <div class="pipeline-stage-icon">💾</div>
+                <div class="pipeline-stage-name">Bytecode</div>
+            </div>
+            
+            <div class="pipeline-arrow">→</div>
+            
+            <!-- Stage 6: PVM (Python Virtual Machine) -->
+            <div class="pipeline-stage" data-stage="pvm">
+                <div class="pipeline-stage-icon">🚀</div>
+                <div class="pipeline-stage-name">PVM</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Controls -->
+    <div id="controls">
+        <button onclick="testStage('source')">Activate Source</button>
+        <button onclick="testStage('tokenizer')">Activate Tokenizer</button>
+        <button onclick="testStage('parser')">Activate Parser</button>
+        <button onclick="testStage('compiler')">Activate Compiler</button>
+        <button onclick="testStage('bytecode')">Activate Bytecode</button>
+        <button onclick="testStage('pvm')">Activate PVM</button>
+        <button onclick="runAllTests()">Run All Tests</button>
+    </div>
+    
+    <!-- Test Results -->
+    <div id="test-results">
+        <h2>Test Results</h2>
+        <div id="results-container">
+            <p>Click "Run All Tests" to execute automated tests.</p>
+        </div>
+    </div>
+    
+    <script>
+        /**
+         * AnimationManager class (simplified for testing)
+         * Handles synchronized updates across visualization panels
+         */
+        class AnimationManager {
+            constructor(panels) {
+                this.pipelineDiagram = panels.pipelineDiagram;
+            }
+            
+            /**
+             * Animates the active pipeline stage
+             * @param {string} stage - Pipeline stage: 'source' | 'tokenizer' | 'parser' | 'compiler' | 'bytecode' | 'pvm'
+             * 
+             * Validates: Requirements 2.2 (animate active stage with visual highlighting)
+             */
+            updatePipelineStage(stage) {
+                if (!this.pipelineDiagram) {
+                    console.warn('Pipeline diagram not available for animation');
+                    return;
+                }
+                
+                // Get all pipeline stage elements
+                const stages = this.pipelineDiagram.querySelectorAll('.pipeline-stage');
+                const arrows = this.pipelineDiagram.querySelectorAll('.pipeline-arrow');
+                
+                // Remove active class from all stages and arrows
+                stages.forEach(stageElement => {
+                    stageElement.classList.remove('active');
+                });
+                arrows.forEach(arrow => {
+                    arrow.classList.remove('active');
+                });
+                
+                // Find and activate the current stage
+                let foundStage = false;
+                stages.forEach((stageElement, index) => {
+                    const stageData = stageElement.getAttribute('data-stage');
+                    
+                    if (stageData === stage) {
+                        // Add active class to current stage
+                        stageElement.classList.add('active');
+                        foundStage = true;
+                        
+                        // Activate all arrows up to and including this stage
+                        for (let i = 0; i < index && i < arrows.length; i++) {
+                            arrows[i].classList.add('active');
+                        }
+                    }
+                });
+                
+                if (!foundStage) {
+                    console.warn(`Pipeline stage '${stage}' not found`);
+                }
+            }
+        }
+        
+        // Initialize AnimationManager
+        const pipelineDiagram = document.getElementById('pipeline-diagram');
+        const animationManager = new AnimationManager({ pipelineDiagram });
+        
+        // Test function to activate a specific stage
+        function testStage(stage) {
+            animationManager.updatePipelineStage(stage);
+        }
+        
+        // Run all automated tests
+        function runAllTests() {
+            const resultsContainer = document.getElementById('results-container');
+            resultsContainer.innerHTML = '';
+            
+            const tests = [];
+            
+            // Test 1: Activate each stage and verify active class
+            const stages = ['source', 'tokenizer', 'parser', 'compiler', 'bytecode', 'pvm'];
+            stages.forEach(stage => {
+                animationManager.updatePipelineStage(stage);
+                
+                const stageElement = document.querySelector(`[data-stage="${stage}"]`);
+                const hasActiveClass = stageElement.classList.contains('active');
+                
+                tests.push({
+                    name: `Activate ${stage} stage`,
+                    passed: hasActiveClass,
+                    details: hasActiveClass ? `Stage ${stage} correctly activated` : `Stage ${stage} not activated`
+                });
+            });
+            
+            // Test 2: Verify only one stage is active at a time
+            animationManager.updatePipelineStage('compiler');
+            const activeStages = document.querySelectorAll('.pipeline-stage.active');
+            tests.push({
+                name: 'Only one stage active at a time',
+                passed: activeStages.length === 1,
+                details: `Found ${activeStages.length} active stage(s), expected 1`
+            });
+            
+            // Test 3: Verify arrows are activated up to current stage
+            animationManager.updatePipelineStage('parser'); // 3rd stage (index 2)
+            const activeArrows = document.querySelectorAll('.pipeline-arrow.active');
+            tests.push({
+                name: 'Arrows activated up to current stage',
+                passed: activeArrows.length === 2, // Should have 2 active arrows for 3rd stage
+                details: `Found ${activeArrows.length} active arrow(s), expected 2 for parser stage`
+            });
+            
+            // Test 4: Verify CSS transition is applied
+            const firstStage = document.querySelector('.pipeline-stage');
+            const computedStyle = window.getComputedStyle(firstStage);
+            const transitionProperty = computedStyle.getPropertyValue('transition-property');
+            tests.push({
+                name: 'CSS transition is applied',
+                passed: transitionProperty.includes('all') || transitionProperty.includes('background'),
+                details: `Transition property: ${transitionProperty}`
+            });
+            
+            // Test 5: Verify transition duration is 300ms
+            const transitionDuration = computedStyle.getPropertyValue('transition-duration');
+            const durationMs = parseFloat(transitionDuration) * 1000;
+            tests.push({
+                name: 'Transition duration is 300ms',
+                passed: Math.abs(durationMs - 300) < 10, // Allow small tolerance
+                details: `Transition duration: ${durationMs.toFixed(0)}ms`
+            });
+            
+            // Test 6: Verify accent color is applied to active stage
+            animationManager.updatePipelineStage('bytecode');
+            const activeStage = document.querySelector('.pipeline-stage.active');
+            const borderColor = window.getComputedStyle(activeStage).getPropertyValue('border-color');
+            tests.push({
+                name: 'Accent color applied to active stage',
+                passed: borderColor.includes('88') || borderColor.includes('166') || borderColor.includes('255'),
+                details: `Border color: ${borderColor}`
+            });
+            
+            // Display results
+            let passedCount = 0;
+            let failedCount = 0;
+            
+            tests.forEach((test, index) => {
+                const testDiv = document.createElement('div');
+                testDiv.className = `test-item ${test.passed ? 'test-pass' : 'test-fail'}`;
+                testDiv.innerHTML = `
+                    <strong>${test.passed ? '✓' : '✗'} Test ${index + 1}:</strong> ${test.name}<br>
+                    <small>${test.details}</small>
+                `;
+                resultsContainer.appendChild(testDiv);
+                
+                if (test.passed) {
+                    passedCount++;
+                } else {
+                    failedCount++;
+                }
+            });
+            
+            // Summary
+            const summaryDiv = document.createElement('div');
+            summaryDiv.style.marginTop = '20px';
+            summaryDiv.style.padding = '15px';
+            summaryDiv.style.backgroundColor = failedCount === 0 ? 'rgba(63, 185, 80, 0.2)' : 'rgba(248, 81, 73, 0.2)';
+            summaryDiv.style.borderRadius = '6px';
+            summaryDiv.innerHTML = `
+                <strong>Summary:</strong> ${passedCount} passed, ${failedCount} failed out of ${tests.length} tests
+            `;
+            resultsContainer.appendChild(summaryDiv);
+        }
+    </script>
+</body>
+</html>

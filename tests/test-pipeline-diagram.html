@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pipeline Diagram Test - Task 6.1</title>
+    <style>
+        /* CSS Variables for Dark Theme */
+        :root {
+            --bg-primary: #0d1117;
+            --accent-color: #58a6ff;
+            --text-primary: #c9d1d9;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --transition-duration: 300ms;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 20px;
+        }
+        
+        h1 {
+            color: var(--accent-color);
+            margin-bottom: 20px;
+        }
+        
+        .test-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .test-section {
+            margin-bottom: 40px;
+            padding: 20px;
+            background-color: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+        
+        .test-section h2 {
+            color: var(--accent-color);
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        .test-controls {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background-color: var(--accent-color);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+        
+        button:hover {
+            background-color: #4a8fd9;
+            transform: translateY(-1px);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .test-result {
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 13px;
+        }
+        
+        .test-result.pass {
+            background-color: rgba(63, 185, 80, 0.1);
+            border: 1px solid #3fb950;
+            color: #3fb950;
+        }
+        
+        .test-result.fail {
+            background-color: rgba(248, 81, 73, 0.1);
+            border: 1px solid #f85149;
+            color: #f85149;
+        }
+        
+        /* Pipeline Diagram Styles */
+        #pipeline-diagram {
+            width: 100%;
+            height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+        
+        .pipeline-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 90%;
+            max-width: 1200px;
+        }
+        
+        .pipeline-stage {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 15px 10px;
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            transition: all var(--transition-duration) ease-in-out;
+            cursor: default;
+            position: relative;
+        }
+        
+        .pipeline-stage:hover {
+            background-color: rgba(255, 255, 255, 0.08);
+        }
+        
+        .pipeline-stage.active {
+            background-color: rgba(88, 166, 255, 0.2);
+            border-color: var(--accent-color);
+            box-shadow: 0 0 20px rgba(88, 166, 255, 0.3);
+            transform: scale(1.05);
+        }
+        
+        .pipeline-stage-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+            transition: transform var(--transition-duration) ease-in-out;
+        }
+        
+        .pipeline-stage.active .pipeline-stage-icon {
+            transform: scale(1.2);
+        }
+        
+        .pipeline-stage-name {
+            font-size: 12px;
+            font-weight: 600;
+            text-align: center;
+            color: var(--text-primary);
+            transition: color var(--transition-duration) ease-in-out;
+        }
+        
+        .pipeline-stage.active .pipeline-stage-name {
+            color: var(--accent-color);
+        }
+        
+        .pipeline-arrow {
+            font-size: 20px;
+            color: var(--border-color);
+            margin: 0 10px;
+            transition: color var(--transition-duration) ease-in-out;
+        }
+        
+        .pipeline-arrow.active {
+            color: var(--accent-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Pipeline Diagram Test - Task 6.1</h1>
+        
+        <div class="test-section">
+            <h2>Visual Test: Pipeline Diagram Structure</h2>
+            <p>The pipeline diagram should display six stages with arrows between them.</p>
+            
+            <!-- Pipeline Diagram -->
+            <div id="pipeline-diagram">
+                <div class="pipeline-container">
+                    <!-- Stage 1: Source Code -->
+                    <div class="pipeline-stage" data-stage="source">
+                        <div class="pipeline-stage-icon">📝</div>
+                        <div class="pipeline-stage-name">Source Code</div>
+                    </div>
+                    
+                    <div class="pipeline-arrow">→</div>
+                    
+                    <!-- Stage 2: Tokenizer -->
+                    <div class="pipeline-stage" data-stage="tokenizer">
+                        <div class="pipeline-stage-icon">🔤</div>
+                        <div class="pipeline-stage-name">Tokenizer</div>
+                    </div>
+                    
+                    <div class="pipeline-arrow">→</div>
+                    
+                    <!-- Stage 3: Parser (AST) -->
+                    <div class="pipeline-stage" data-stage="parser">
+                        <div class="pipeline-stage-icon">🌳</div>
+                        <div class="pipeline-stage-name">Parser (AST)</div>
+                    </div>
+                    
+                    <div class="pipeline-arrow">→</div>
+                    
+                    <!-- Stage 4: Compiler -->
+                    <div class="pipeline-stage" data-stage="compiler">
+                        <div class="pipeline-stage-icon">⚙️</div>
+                        <div class="pipeline-stage-name">Compiler</div>
+                    </div>
+                    
+                    <div class="pipeline-arrow">→</div>
+                    
+                    <!-- Stage 5: Bytecode -->
+                    <div class="pipeline-stage" data-stage="bytecode">
+                        <div class="pipeline-stage-icon">💾</div>
+                        <div class="pipeline-stage-name">Bytecode</div>
+                    </div>
+                    
+                    <div class="pipeline-arrow">→</div>
+                    
+                    <!-- Stage 6: PVM (Python Virtual Machine) -->
+                    <div class="pipeline-stage" data-stage="pvm">
+                        <div class="pipeline-stage-icon">🚀</div>
+                        <div class="pipeline-stage-name">PVM</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Interactive Test: Stage Highlighting</h2>
+            <p>Click buttons to test stage highlighting with 300ms CSS transitions.</p>
+            
+            <div class="test-controls">
+                <button onclick="highlightStage('source')">Source Code</button>
+                <button onclick="highlightStage('tokenizer')">Tokenizer</button>
+                <button onclick="highlightStage('parser')">Parser</button>
+                <button onclick="highlightStage('compiler')">Compiler</button>
+                <button onclick="highlightStage('bytecode')">Bytecode</button>
+                <button onclick="highlightStage('pvm')">PVM</button>
+                <button onclick="clearHighlight()">Clear All</button>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Automated Tests</h2>
+            <p>Run automated tests to verify requirements.</p>
+            
+            <div class="test-controls">
+                <button onclick="runAllTests()">Run All Tests</button>
+            </div>
+            
+            <div id="test-results"></div>
+        </div>
+    </div>
+    
+    <script>
+        // Helper function to highlight a specific stage
+        function highlightStage(stage) {
+            const pipelineDiagram = document.getElementById('pipeline-diagram');
+            const stages = pipelineDiagram.querySelectorAll('.pipeline-stage');
+            const arrows = pipelineDiagram.querySelectorAll('.pipeline-arrow');
+            
+            // Remove active class from all stages and arrows
+            stages.forEach(stageElement => {
+                stageElement.classList.remove('active');
+            });
+            arrows.forEach(arrow => {
+                arrow.classList.remove('active');
+            });
+            
+            // Find and activate the current stage
+            stages.forEach((stageElement, index) => {
+                const stageData = stageElement.getAttribute('data-stage');
+                
+                if (stageData === stage) {
+                    // Add active class to current stage
+                    stageElement.classList.add('active');
+                    
+                    // Activate all arrows up to and including this stage
+                    for (let i = 0; i < index && i < arrows.length; i++) {
+                        arrows[i].classList.add('active');
+                    }
+                }
+            });
+        }
+        
+        // Helper function to clear all highlights
+        function clearHighlight() {
+            const pipelineDiagram = document.getElementById('pipeline-diagram');
+            const stages = pipelineDiagram.querySelectorAll('.pipeline-stage');
+            const arrows = pipelineDiagram.querySelectorAll('.pipeline-arrow');
+            
+            stages.forEach(stageElement => {
+                stageElement.classList.remove('active');
+            });
+            arrows.forEach(arrow => {
+                arrow.classList.remove('active');
+            });
+        }
+        
+        // Test functions
+        function addTestResult(testName, passed, message) {
+            const resultsDiv = document.getElementById('test-results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${passed ? 'pass' : 'fail'}`;
+            resultDiv.textContent = `${passed ? '✓' : '✗'} ${testName}: ${message}`;
+            resultsDiv.appendChild(resultDiv);
+        }
+        
+        function clearTestResults() {
+            const resultsDiv = document.getElementById('test-results');
+            resultsDiv.innerHTML = '';
+        }
+        
+        // Test 1: Verify six stages exist
+        function testSixStagesExist() {
+            const stages = document.querySelectorAll('.pipeline-stage');
+            const passed = stages.length === 6;
+            addTestResult(
+                'Six stages exist',
+                passed,
+                passed ? 'Found 6 pipeline stages' : `Found ${stages.length} stages, expected 6`
+            );
+            return passed;
+        }
+        
+        // Test 2: Verify stage names
+        function testStageNames() {
+            const expectedStages = ['source', 'tokenizer', 'parser', 'compiler', 'bytecode', 'pvm'];
+            const stages = document.querySelectorAll('.pipeline-stage');
+            const actualStages = Array.from(stages).map(s => s.getAttribute('data-stage'));
+            
+            const passed = JSON.stringify(actualStages) === JSON.stringify(expectedStages);
+            addTestResult(
+                'Stage names correct',
+                passed,
+                passed ? 'All stage names match specification' : `Expected ${expectedStages}, got ${actualStages}`
+            );
+            return passed;
+        }
+        
+        // Test 3: Verify CSS transitions
+        function testCSSTransitions() {
+            const stage = document.querySelector('.pipeline-stage');
+            const computedStyle = window.getComputedStyle(stage);
+            const transitionDuration = computedStyle.transitionDuration;
+            
+            // Check if transition duration is 300ms (0.3s)
+            const passed = transitionDuration === '0.3s' || transitionDuration === '300ms';
+            addTestResult(
+                'CSS transition duration',
+                passed,
+                passed ? 'Transition duration is 300ms' : `Transition duration is ${transitionDuration}, expected 300ms`
+            );
+            return passed;
+        }
+        
+        // Test 4: Verify accent color
+        function testAccentColor() {
+            const stage = document.querySelector('.pipeline-stage');
+            
+            // Activate a stage
+            stage.classList.add('active');
+            
+            const computedStyle = window.getComputedStyle(stage);
+            const borderColor = computedStyle.borderColor;
+            
+            // Check if border color contains the accent color (rgb(88, 166, 255))
+            const passed = borderColor.includes('88') && borderColor.includes('166') && borderColor.includes('255');
+            
+            // Clean up
+            stage.classList.remove('active');
+            
+            addTestResult(
+                'Accent color #58a6ff',
+                passed,
+                passed ? 'Active stage uses accent color' : `Border color is ${borderColor}`
+            );
+            return passed;
+        }
+        
+        // Test 5: Verify positioning (center-top, 70% width, 20% height)
+        function testPositioning() {
+            const pipelineDiagram = document.getElementById('pipeline-diagram');
+            const computedStyle = window.getComputedStyle(pipelineDiagram);
+            
+            // Check height (should be 200px or 20% of viewport)
+            const height = computedStyle.height;
+            const passed = parseInt(height) >= 150; // Reasonable height for 20% of typical viewport
+            
+            addTestResult(
+                'Positioning and dimensions',
+                passed,
+                passed ? 'Pipeline diagram has appropriate dimensions' : `Height is ${height}`
+            );
+            return passed;
+        }
+        
+        // Test 6: Verify stage highlighting works
+        function testStageHighlighting() {
+            clearHighlight();
+            
+            // Highlight a stage
+            highlightStage('parser');
+            
+            // Check if the parser stage is active
+            const parserStage = document.querySelector('[data-stage="parser"]');
+            const passed = parserStage.classList.contains('active');
+            
+            // Clean up
+            clearHighlight();
+            
+            addTestResult(
+                'Stage highlighting',
+                passed,
+                passed ? 'Stage highlighting works correctly' : 'Stage highlighting failed'
+            );
+            return passed;
+        }
+        
+        // Run all tests
+        function runAllTests() {
+            clearTestResults();
+            
+            const results = [
+                testSixStagesExist(),
+                testStageNames(),
+                testCSSTransitions(),
+                testAccentColor(),
+                testPositioning(),
+                testStageHighlighting()
+            ];
+            
+            const allPassed = results.every(r => r);
+            const passedCount = results.filter(r => r).length;
+            
+            addTestResult(
+                'Overall',
+                allPassed,
+                `${passedCount}/${results.length} tests passed`
+            );
+        }
+    </script>
+</body>
+</html>

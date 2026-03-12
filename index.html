@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizador de Ejecución Python</title>
+    
+    <!-- Monaco Editor CSS (loaded from unpkg, no SRI hash needed) -->
+    <link rel="stylesheet" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css" />
+    
+    <!-- Application Styles -->
+    <link rel="stylesheet" href="src/styles/main.css">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <h2>Visualizador de Ejecución Python</h2>
+        <div class="spinner"></div>
+        <p id="loading-status">Cargando dependencias...</p>
+    </div>
+
+    <!-- Error Screen -->
+    <div id="error-screen">
+        <h2>Error de Carga</h2>
+        <p id="error-message">No se pudieron cargar las dependencias requeridas.</p>
+        <p>Por favor verifica tu conexión a internet y recarga la página.</p>
+        <div class="error-details" id="error-details"></div>
+    </div>
+    
+    <!-- Main Application -->
+    <div id="app">
+        <!-- Step Explanation Tooltip -->
+        <!-- Validates: Requirements 9.2, 9.3, 9.4, 9.5, 9.6 -->
+        <div id="explanation-tooltip">
+            <div class="explanation-header">
+                <h3 class="explanation-title">Explicación del Paso</h3>
+                <button class="explanation-close-btn" id="explanation-close" title="Cerrar explicación">×</button>
+            </div>
+            <div class="explanation-content" id="explanation-content">
+                <!-- Content will be dynamically populated -->
+            </div>
+        </div>
+        
+        <div id="app-container">
+            <!-- Left Panel (30% width): toolbar + Monaco Editor -->
+            <div id="left-panel">
+                <!-- Editor Toolbar: Example Selector and Run button -->
+                <!-- Validates: Requirements 10.1, 10.5, 10.6, 8 (execution trigger) -->
+                <div id="editor-toolbar">
+                    <select id="example-selector" class="example-selector" title="Cargar un ejemplo de código precargado">
+                        <option value="">-- Cargar Ejemplo --</option>
+                    </select>
+                    <button id="btn-run" class="run-btn" title="Compilar y ejecutar el código actual">
+                        <span class="run-btn-icon">▶</span>
+                        <span class="run-btn-label">Ejecutar</span>
+                    </button>
+                </div>
+                <!-- Run status message bar (shows loading/errors/success) -->
+                <div id="run-status" class="run-status hidden"></div>
+                <!-- Monaco Editor Container -->
+                <div id="monaco-container"></div>
+            </div>
+            
+            <!-- Right Panel (70% width, contains visualizations) -->
+            <div id="right-panel">
+                <!-- GIL Indicator (top-right, 200px width, 40px height) -->
+                <div id="gil-indicator" class="gil-released" data-tooltip="El Bloqueo Global del Intérprete (GIL) es un mutex que protege el acceso a los objetos Python, evitando que múltiples hilos ejecuten bytecode Python simultáneamente.">
+                    <div class="gil-icon">🔒</div>
+                    <div class="gil-info">
+                        <div class="gil-state">LIBERADO</div>
+                        <div class="gil-thread">Hilo: -1</div>
+                    </div>
+                </div>
+                
+                <!-- Pipeline Diagram (center-top region, 70% width, 20% height) -->
+                <div id="pipeline-diagram">
+                    <div class="pipeline-container">
+                        <!-- Etapa 1: Código Fuente -->
+                        <div class="pipeline-stage" data-stage="source">
+                            <div class="pipeline-stage-icon">📝</div>
+                            <div class="pipeline-stage-name">Código Fuente</div>
+                        </div>
+
+                        <div class="pipeline-arrow">→</div>
+
+                        <!-- Etapa 2: Tokenizador -->
+                        <div class="pipeline-stage" data-stage="tokenizer">
+                            <div class="pipeline-stage-icon">🔤</div>
+                            <div class="pipeline-stage-name">Tokenizador</div>
+                        </div>
+
+                        <div class="pipeline-arrow">→</div>
+
+                        <!-- Etapa 3: Analizador (AST) -->
+                        <div class="pipeline-stage" data-stage="parser">
+                            <div class="pipeline-stage-icon">🌳</div>
+                            <div class="pipeline-stage-name">Analizador (AST)</div>
+                        </div>
+
+                        <div class="pipeline-arrow">→</div>
+
+                        <!-- Etapa 4: Compilador -->
+                        <div class="pipeline-stage" data-stage="compiler">
+                            <div class="pipeline-stage-icon">⚙️</div>
+                            <div class="pipeline-stage-name">Compilador</div>
+                        </div>
+
+                        <div class="pipeline-arrow">→</div>
+
+                        <!-- Etapa 5: Bytecode -->
+                        <div class="pipeline-stage" data-stage="bytecode">
+                            <div class="pipeline-stage-icon">💾</div>
+                            <div class="pipeline-stage-name">Bytecode</div>
+                        </div>
+
+                        <div class="pipeline-arrow">→</div>
+
+                        <!-- Etapa 6: MV Python (Máquina Virtual Python) -->
+                        <div class="pipeline-stage" data-stage="pvm">
+                            <div class="pipeline-stage-icon">🚀</div>
+                            <div class="pipeline-stage-name">MVP</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Visualization Panels Container (below pipeline, 80% height) -->
+                <div id="visualization-panels">
+                    <!-- Bytecode/Tokens Panel (center-left, 35% width, 60% height) -->
+                    <div id="bytecode-panel" class="visualization-panel">
+                        <div class="panel-header">
+                            <h3 class="panel-title" id="bytecode-panel-title">Bytecode</h3>
+                            <div class="panel-tabs">
+                                <button class="panel-tab active" id="tab-bytecode">Bytecode</button>
+                                <button class="panel-tab" id="tab-tokens">Tokens</button>
+                            </div>
+                        </div>
+                        <div class="panel-content" id="bytecode-content">
+                            <div class="bytecode-placeholder">
+                                <p>No se generó bytecode aún</p>
+                                <p class="placeholder-hint">Escribe código Python y ejecútalo para ver las instrucciones bytecode</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Stack Panel (center-center, 35% width, 60% height) -->
+                    <div id="stack-panel" class="visualization-panel">
+                        <div class="panel-header">
+                            <h3 class="panel-title">Pila de Llamadas</h3>
+                            <span class="panel-subtitle">Marcos de Función</span>
+                        </div>
+                        <div class="panel-content" id="stack-content">
+                            <div class="stack-placeholder">
+                                <div class="stack-empty-icon">📚</div>
+                                <p class="stack-empty-text">Sin marcos de pila aún</p>
+                                <p class="stack-empty-hint">Ejecuta código para ver la pila de llamadas</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Memory Panel (right, 30% width, 80% height) -->
+                    <div id="memory-panel" class="visualization-panel">
+                        <div class="panel-header">
+                            <h3 class="panel-title">Montículo de Memoria</h3>
+                            <span class="panel-subtitle">Objetos y Referencias</span>
+                        </div>
+                        <div class="panel-content" id="memory-content">
+                            <!-- SVG overlay for reference arrows -->
+                            <svg id="memory-arrows" class="memory-arrows-overlay"></svg>
+
+                            <!-- Memory objects container -->
+                            <div id="memory-objects-container">
+                                <div class="memory-placeholder">
+                                    <div class="memory-empty-icon">🧠</div>
+                                    <p class="memory-empty-text">No hay objetos asignados aún</p>
+                                    <p class="memory-empty-hint">Ejecuta código para ver los objetos del montículo</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Control Bar (bottom-center, 70% width, 20% height) -->
+                <!-- Validates: Requirements 8.1, 8.2, 8.3, 8.4, 8.5, 9.1 -->
+                <div id="control-bar">
+                    <div class="control-bar-container">
+                        <!-- Execution Control Buttons -->
+                        <div class="control-buttons">
+                            <button id="btn-step-back" class="control-btn" title="Paso Atrás (Instrucción anterior)" disabled>
+                                <span class="control-btn-icon">←</span>
+                                <span class="control-btn-label">Paso Atrás</span>
+                            </button>
+
+                            <button id="btn-step-forward" class="control-btn" title="Paso Adelante (Instrucción siguiente)" disabled>
+                                <span class="control-btn-icon">→</span>
+                                <span class="control-btn-label">Paso Adelante</span>
+                            </button>
+
+                            <button id="btn-auto-play" class="control-btn" title="Reproducción automática" disabled>
+                                <span class="control-btn-icon">▶</span>
+                                <span class="control-btn-label">Reproducir</span>
+                            </button>
+
+                            <button id="btn-reset" class="control-btn" title="Reiniciar al inicio" disabled>
+                                <span class="control-btn-icon">↻</span>
+                                <span class="control-btn-label">Reiniciar</span>
+                            </button>
+
+                            <button id="btn-explain" class="control-btn" title="Explicar este paso" disabled>
+                                <span class="control-btn-icon">?</span>
+                                <span class="control-btn-label">Explicar</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Speed Control Slider -->
+                        <div class="speed-control">
+                            <label for="speed-slider" class="speed-label">Velocidad:</label>
+                            <div class="speed-slider-container">
+                                <span class="speed-value-label">0.5x</span>
+                                <input 
+                                    type="range" 
+                                    id="speed-slider" 
+                                    class="speed-slider" 
+                                    min="0.5" 
+                                    max="3" 
+                                    step="0.1" 
+                                    value="1"
+                                    title="Adjust auto-play speed"
+                                />
+                                <span class="speed-value-label">3x</span>
+                            </div>
+                            <span id="speed-display" class="speed-display">1.0x</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- External Dependencies -->
+    <!-- Pyodide is now loaded inside a Web Worker (src/scripts/pyodide-worker.js)
+         so it never blocks the main UI thread. No script tag needed here. -->
+    <!-- fast-check for optional property-based tests -->
+    <script src="https://unpkg.com/fast-check@3.15.0/lib/bundle.js"></script>
+    <!-- Monaco loader.js is loaded dynamically in app-init.js.
+         Since Pyodide is now in a Worker, there is no AMD/UMD conflict. -->
+    
+    <!-- Application Scripts -->
+    <script src="src/scripts/data-models.js"></script>
+    <script src="src/scripts/state-store.js"></script>
+    <script src="src/scripts/execution-engine.js"></script>
+    <script src="src/scripts/animation-manager.js"></script>
+    <script src="src/scripts/view-controller.js"></script>
+    <script src="src/scripts/property-tests.js"></script>
+    <script src="src/scripts/app-init.js"></script>
+</body>
+</html>

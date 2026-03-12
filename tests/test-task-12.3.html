@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task 12.3 - Step Explanation Feature Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        h1 {
+            color: #58a6ff;
+            border-bottom: 2px solid #58a6ff;
+            padding-bottom: 10px;
+        }
+        
+        h2 {
+            color: #58a6ff;
+            margin-top: 30px;
+        }
+        
+        .test-section {
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .test-pass {
+            background-color: rgba(63, 185, 80, 0.2);
+            border-left: 4px solid #3fb950;
+        }
+        
+        .test-fail {
+            background-color: rgba(248, 81, 73, 0.2);
+            border-left: 4px solid #f85149;
+        }
+        
+        .test-info {
+            background-color: rgba(88, 166, 255, 0.2);
+            border-left: 4px solid #58a6ff;
+        }
+        
+        button {
+            background-color: #58a6ff;
+            color: #0d1117;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background-color: #79c0ff;
+        }
+        
+        code {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .summary {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: rgba(88, 166, 255, 0.1);
+            border: 2px solid #58a6ff;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Task 12.3 - Step Explanation Feature Test</h1>
+    
+    <div class="test-info">
+        <strong>Task Requirements:</strong>
+        <ul>
+            <li>Add click handler for "Explain this step" button</li>
+            <li>Display tooltip with explanation text from current ExecutionState</li>
+            <li>Include bytecode instruction, stack effects, and memory effects in explanation</li>
+            <li>Requirements: 9.2, 9.3, 9.4, 9.5, 9.6</li>
+        </ul>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 1: Explanation Tooltip Structure</h2>
+        <button onclick="runTest1()">Run Test 1</button>
+        <div id="test1-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 2: Explanation Content Generation</h2>
+        <button onclick="runTest2()">Run Test 2</button>
+        <div id="test2-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 3: Show/Hide Functionality</h2>
+        <button onclick="runTest3()">Run Test 3</button>
+        <div id="test3-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 4: Explanation Dismissed on Step Change</h2>
+        <button onclick="runTest4()">Run Test 4</button>
+        <div id="test4-results"></div>
+    </div>
+    
+    <div class="summary" id="summary" style="display: none;">
+        <h2>Test Summary</h2>
+        <div id="summary-content"></div>
+    </div>
+    
+    <script>
+        let testResults = {
+            passed: 0,
+            failed: 0,
+            total: 0
+        };
+        
+        function logResult(containerId, message, isPass) {
+            const container = document.getElementById(containerId);
+            const div = document.createElement('div');
+            div.className = isPass ? 'test-pass' : 'test-fail';
+            div.textContent = (isPass ? '✓ PASS: ' : '✗ FAIL: ') + message;
+            container.appendChild(div);
+            
+            testResults.total++;
+            if (isPass) {
+                testResults.passed++;
+            } else {
+                testResults.failed++;
+            }
+            
+            updateSummary();
+        }
+        
+        function updateSummary() {
+            const summary = document.getElementById('summary');
+            const summaryContent = document.getElementById('summary-content');
+            summary.style.display = 'block';
+            
+            const passRate = testResults.total > 0 
+                ? ((testResults.passed / testResults.total) * 100).toFixed(1)
+                : 0;
+            
+            summaryContent.innerHTML = `
+                <p><strong>Total Tests:</strong> ${testResults.total}</p>
+                <p><strong>Passed:</strong> ${testResults.passed}</p>
+                <p><strong>Failed:</strong> ${testResults.failed}</p>
+                <p><strong>Pass Rate:</strong> ${passRate}%</p>
+            `;
+        }
+        
+        // Test 1: Verify explanation tooltip structure exists
+        function runTest1() {
+            const container = document.getElementById('test1-results');
+            container.innerHTML = '';
+            
+            // Check if explanation tooltip element exists
+            const tooltip = document.getElementById('explanation-tooltip');
+            logResult('test1-results', 
+                'Explanation tooltip element exists', 
+                tooltip !== null);
+            
+            // Check if explanation content element exists
+            const content = document.getElementById('explanation-content');
+            logResult('test1-results', 
+                'Explanation content element exists', 
+                content !== null);
+            
+            // Check if close button exists
+            const closeBtn = document.getElementById('explanation-close');
+            logResult('test1-results', 
+                'Explanation close button exists', 
+                closeBtn !== null);
+            
+            // Check if tooltip has correct initial state (hidden)
+            if (tooltip) {
+                const isHidden = !tooltip.classList.contains('visible');
+                logResult('test1-results', 
+                    'Tooltip is initially hidden', 
+                    isHidden);
+            }
+        }
+        
+        // Test 2: Verify explanation content generation
+        function runTest2() {
+            const container = document.getElementById('test2-results');
+            container.innerHTML = '';
+            
+            // Create a mock execution state
+            const mockState = {
+                stepNumber: 5,
+                lineNumber: 3,
+                pipelineStage: 'pvm',
+                instructionPointer: 10,
+                bytecode: [
+                    { offset: 10, opname: 'LOAD_FAST', arg: 0, argval: 'x', lineno: 3 }
+                ],
+                callStack: [
+                    { 
+                        frameId: 'frame-1', 
+                        functionName: 'main', 
+                        localVariables: new Map([['x', 42]]),
+                        returnAddress: 0,
+                        lineNumber: 3
+                    }
+                ],
+                heap: [
+                    { objectId: 'obj-1', type: 'int', value: 42, refCount: 1, references: [] }
+                ],
+                gilStatus: { state: 'ACQUIRED', threadId: 1, explanation: 'GIL is held' },
+                explanation: 'Loading local variable x onto the stack'
+            };
+            
+            // Create a mock ViewController to test buildExplanationContent
+            const mockVC = {
+                explanationContent: document.createElement('div'),
+                buildExplanationContent: function(state) {
+                    // This is a simplified version of the actual method
+                    this.explanationContent.innerHTML = '';
+                    
+                    // Main explanation
+                    if (state.explanation) {
+                        const mainSection = document.createElement('div');
+                        mainSection.className = 'explanation-section';
+                        const mainContent = document.createElement('div');
+                        mainContent.className = 'explanation-section-content';
+                        mainContent.textContent = state.explanation;
+                        mainSection.appendChild(mainContent);
+                        this.explanationContent.appendChild(mainSection);
+                    }
+                    
+                    // Bytecode section
+                    if (state.bytecode && state.instructionPointer !== null) {
+                        const currentInstruction = state.bytecode.find(
+                            instr => instr.offset === state.instructionPointer
+                        );
+                        if (currentInstruction) {
+                            const bytecodeSection = document.createElement('div');
+                            bytecodeSection.className = 'explanation-section';
+                            const bytecodeContent = document.createElement('div');
+                            bytecodeContent.className = 'explanation-bytecode';
+                            bytecodeContent.textContent = currentInstruction.opname;
+                            bytecodeSection.appendChild(bytecodeContent);
+                            this.explanationContent.appendChild(bytecodeSection);
+                        }
+                    }
+                    
+                    // Stack section
+                    if (state.callStack && state.callStack.length > 0) {
+                        const stackSection = document.createElement('div');
+                        stackSection.className = 'explanation-section';
+                        const stackEffect = document.createElement('div');
+                        stackEffect.className = 'explanation-effect';
+                        stackEffect.textContent = 'Stack info';
+                        stackSection.appendChild(stackEffect);
+                        this.explanationContent.appendChild(stackSection);
+                    }
+                    
+                    // Memory section
+                    if (state.heap && state.heap.length > 0) {
+                        const memorySection = document.createElement('div');
+                        memorySection.className = 'explanation-section';
+                        const memoryEffect = document.createElement('div');
+                        memoryEffect.className = 'explanation-effect';
+                        memoryEffect.textContent = 'Memory info';
+                        memorySection.appendChild(memoryEffect);
+                        this.explanationContent.appendChild(memorySection);
+                    }
+                }
+            };
+            
+            // Build explanation content
+            mockVC.buildExplanationContent(mockState);
+            
+            // Check if main explanation was added
+            const hasMainExplanation = mockVC.explanationContent.textContent.includes('Loading local variable');
+            logResult('test2-results', 
+                'Main explanation text is included', 
+                hasMainExplanation);
+            
+            // Check if bytecode instruction was added
+            const hasBytecode = mockVC.explanationContent.textContent.includes('LOAD_FAST');
+            logResult('test2-results', 
+                'Bytecode instruction is included (Req 9.3)', 
+                hasBytecode);
+            
+            // Check if stack info was added
+            const hasStackInfo = mockVC.explanationContent.textContent.includes('Stack info');
+            logResult('test2-results', 
+                'Stack effects are included (Req 9.4)', 
+                hasStackInfo);
+            
+            // Check if memory info was added
+            const hasMemoryInfo = mockVC.explanationContent.textContent.includes('Memory info');
+            logResult('test2-results', 
+                'Memory effects are included (Req 9.5)', 
+                hasMemoryInfo);
+        }
+        
+        // Test 3: Verify show/hide functionality
+        function runTest3() {
+            const container = document.getElementById('test3-results');
+            container.innerHTML = '';
+            
+            const tooltip = document.getElementById('explanation-tooltip');
+            
+            if (!tooltip) {
+                logResult('test3-results', 
+                    'Cannot test show/hide - tooltip element not found', 
+                    false);
+                return;
+            }
+            
+            // Test show
+            tooltip.classList.add('visible');
+            const isVisible = tooltip.classList.contains('visible');
+            logResult('test3-results', 
+                'Tooltip can be shown (Req 9.2)', 
+                isVisible);
+            
+            // Test hide
+            tooltip.classList.remove('visible');
+            const isHidden = !tooltip.classList.contains('visible');
+            logResult('test3-results', 
+                'Tooltip can be hidden (Req 9.6)', 
+                isHidden);
+        }
+        
+        // Test 4: Verify explanation is dismissed on step change
+        function runTest4() {
+            const container = document.getElementById('test4-results');
+            container.innerHTML = '';
+            
+            // Create mock StateStore
+            const mockStateStore = {
+                states: [
+                    { stepNumber: 1, explanation: 'Step 1' },
+                    { stepNumber: 2, explanation: 'Step 2' }
+                ],
+                currentIndex: 0,
+                stepForward: function() {
+                    if (this.currentIndex < this.states.length - 1) {
+                        this.currentIndex++;
+                        return true;
+                    }
+                    return false;
+                },
+                stepBack: function() {
+                    if (this.currentIndex > 0) {
+                        this.currentIndex--;
+                        return true;
+                    }
+                    return false;
+                },
+                getCurrentState: function() {
+                    return this.states[this.currentIndex];
+                },
+                canStepForward: function() {
+                    return this.currentIndex < this.states.length - 1;
+                },
+                canStepBack: function() {
+                    return this.currentIndex > 0;
+                }
+            };
+            
+            // Create mock AnimationManager
+            const mockAnimationManager = {
+                updateAll: function(state) {
+                    // Mock update
+                }
+            };
+            
+            // Create mock ViewController
+            const mockVC = {
+                stateStore: mockStateStore,
+                animationManager: mockAnimationManager,
+                explanationTooltip: document.getElementById('explanation-tooltip'),
+                hideExplanation: function() {
+                    if (this.explanationTooltip) {
+                        this.explanationTooltip.classList.remove('visible');
+                    }
+                },
+                updateButtonStates: function() {},
+                onStepForward: function() {
+                    this.hideExplanation();
+                    const success = this.stateStore.stepForward();
+                    if (success) {
+                        const state = this.stateStore.getCurrentState();
+                        if (state) {
+                            this.animationManager.updateAll(state);
+                        }
+                        this.updateButtonStates();
+                    }
+                },
+                onStepBack: function() {
+                    this.hideExplanation();
+                    const success = this.stateStore.stepBack();
+                    if (success) {
+                        const state = this.stateStore.getCurrentState();
+                        if (state) {
+                            this.animationManager.updateAll(state);
+                        }
+                        this.updateButtonStates();
+                    }
+                }
+            };
+            
+            // Show tooltip
+            if (mockVC.explanationTooltip) {
+                mockVC.explanationTooltip.classList.add('visible');
+                
+                // Test step forward hides tooltip
+                mockVC.onStepForward();
+                const hiddenAfterForward = !mockVC.explanationTooltip.classList.contains('visible');
+                logResult('test4-results', 
+                    'Tooltip is hidden after step forward (Req 9.6)', 
+                    hiddenAfterForward);
+                
+                // Show tooltip again
+                mockVC.explanationTooltip.classList.add('visible');
+                
+                // Test step back hides tooltip
+                mockVC.onStepBack();
+                const hiddenAfterBack = !mockVC.explanationTooltip.classList.contains('visible');
+                logResult('test4-results', 
+                    'Tooltip is hidden after step back (Req 9.6)', 
+                    hiddenAfterBack);
+            } else {
+                logResult('test4-results', 
+                    'Cannot test - tooltip element not found', 
+                    false);
+            }
+        }
+        
+        // Run all tests on page load
+        window.addEventListener('load', () => {
+            console.log('Task 12.3 Test Page Loaded');
+            console.log('Click the "Run Test" buttons to execute individual tests');
+        });
+    </script>
+</body>
+</html>

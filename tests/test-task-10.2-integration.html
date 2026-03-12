@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task 10.2 Integration Test - GIL Status Updates</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            padding: 20px;
+            margin: 0;
+        }
+        
+        h1 {
+            color: #58a6ff;
+            margin-bottom: 10px;
+        }
+        
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .controls {
+            margin: 20px 0;
+            padding: 20px;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+        }
+        
+        button {
+            background-color: #238636;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        button:hover {
+            background-color: #2ea043;
+        }
+        
+        #gil-indicator {
+            width: 200px;
+            height: 40px;
+            position: relative;
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            margin: 20px 0;
+            transition: all 300ms ease-in-out;
+        }
+        
+        #gil-indicator.gil-acquired {
+            border-color: #3fb950;
+            background-color: rgba(63, 185, 80, 0.1);
+        }
+        
+        #gil-indicator.gil-released {
+            border-color: #f85149;
+            background-color: rgba(248, 81, 73, 0.1);
+        }
+        
+        .gil-icon {
+            font-size: 20px;
+            margin-right: 10px;
+        }
+        
+        .gil-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        
+        .gil-state {
+            font-weight: bold;
+            font-size: 12px;
+            transition: color 300ms ease-in-out;
+        }
+        
+        #gil-indicator.gil-acquired .gil-state {
+            color: #3fb950;
+        }
+        
+        #gil-indicator.gil-released .gil-state {
+            color: #f85149;
+        }
+        
+        .gil-thread {
+            font-size: 10px;
+            font-family: 'Courier New', monospace;
+            color: #8b949e;
+        }
+        
+        .test-log {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid #58a6ff;
+            padding-left: 10px;
+        }
+        
+        .log-success {
+            border-left-color: #3fb950;
+        }
+        
+        .log-error {
+            border-left-color: #f85149;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Task 10.2 Integration Test</h1>
+        <p>Testing the updateGILStatus method in AnimationManager</p>
+        
+        <div class="controls">
+            <h3>Test Controls</h3>
+            <button onclick="testAcquired()">Test ACQUIRED State</button>
+            <button onclick="testReleased()">Test RELEASED State</button>
+            <button onclick="testCycleStates()">Cycle States</button>
+            <button onclick="testNullHandling()">Test Null Handling</button>
+            <button onclick="testMissingProperties()">Test Missing Properties</button>
+            <button onclick="clearLog()">Clear Log</button>
+        </div>
+        
+        <h3>GIL Indicator</h3>
+        <div id="gil-indicator" class="gil-released">
+            <div class="gil-icon">🔒</div>
+            <div class="gil-info">
+                <div class="gil-state">RELEASED</div>
+                <div class="gil-thread">Thread: -1</div>
+            </div>
+        </div>
+        
+        <h3>Test Log</h3>
+        <div id="test-log" class="test-log"></div>
+    </div>
+    
+    <script src="../src/scripts/animation-manager.js"></script>
+    <script>
+        // Initialize AnimationManager
+        const gilIndicator = document.getElementById('gil-indicator');
+        const animationManager = new AnimationManager({
+            gilIndicator: gilIndicator
+        });
+        
+        const testLog = document.getElementById('test-log');
+        
+        function log(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            testLog.appendChild(entry);
+            testLog.scrollTop = testLog.scrollHeight;
+        }
+        
+        function clearLog() {
+            testLog.innerHTML = '';
+            log('Log cleared');
+        }
+        
+        function testAcquired() {
+            log('Testing ACQUIRED state with Thread 1...');
+            const gilStatus = {
+                state: 'ACQUIRED',
+                threadId: 1,
+                explanation: 'Thread 1 acquired the GIL'
+            };
+            animationManager.updateGILStatus(gilStatus);
+            
+            // Verify
+            setTimeout(() => {
+                const hasClass = gilIndicator.classList.contains('gil-acquired');
+                const stateText = document.querySelector('.gil-state').textContent;
+                const threadText = document.querySelector('.gil-thread').textContent;
+                
+                if (hasClass && stateText === 'ACQUIRED' && threadText === 'Thread: 1') {
+                    log('✓ ACQUIRED state test passed', 'success');
+                } else {
+                    log('✗ ACQUIRED state test failed', 'error');
+                }
+            }, 100);
+        }
+        
+        function testReleased() {
+            log('Testing RELEASED state...');
+            const gilStatus = {
+                state: 'RELEASED',
+                threadId: -1,
+                explanation: 'GIL was released'
+            };
+            animationManager.updateGILStatus(gilStatus);
+            
+            // Verify
+            setTimeout(() => {
+                const hasClass = gilIndicator.classList.contains('gil-released');
+                const stateText = document.querySelector('.gil-state').textContent;
+                const threadText = document.querySelector('.gil-thread').textContent;
+                
+                if (hasClass && stateText === 'RELEASED' && threadText === 'Thread: -1') {
+                    log('✓ RELEASED state test passed', 'success');
+                } else {
+                    log('✗ RELEASED state test failed', 'error');
+                }
+            }, 100);
+        }
+        
+        function testCycleStates() {
+            log('Cycling through states...');
+            let threadId = 1;
+            let isAcquired = false;
+            
+            const interval = setInterval(() => {
+                isAcquired = !isAcquired;
+                const gilStatus = {
+                    state: isAcquired ? 'ACQUIRED' : 'RELEASED',
+                    threadId: isAcquired ? threadId++ : -1,
+                    explanation: isAcquired ? `Thread ${threadId} acquired` : 'Released'
+                };
+                animationManager.updateGILStatus(gilStatus);
+                log(`State: ${gilStatus.state}, Thread: ${gilStatus.threadId}`);
+                
+                if (threadId > 5) {
+                    clearInterval(interval);
+                    log('✓ Cycle test completed', 'success');
+                }
+            }, 800);
+        }
+        
+        function testNullHandling() {
+            log('Testing null/undefined handling...');
+            try {
+                animationManager.updateGILStatus(null);
+                log('✓ Null handling test passed', 'success');
+            } catch (error) {
+                log('✗ Null handling test failed: ' + error.message, 'error');
+            }
+            
+            try {
+                animationManager.updateGILStatus(undefined);
+                log('✓ Undefined handling test passed', 'success');
+            } catch (error) {
+                log('✗ Undefined handling test failed: ' + error.message, 'error');
+            }
+        }
+        
+        function testMissingProperties() {
+            log('Testing missing properties...');
+            
+            // Missing state
+            animationManager.updateGILStatus({ threadId: 2 });
+            setTimeout(() => {
+                const stateText = document.querySelector('.gil-state').textContent;
+                if (stateText === 'RELEASED') {
+                    log('✓ Missing state defaults to RELEASED', 'success');
+                } else {
+                    log('✗ Missing state test failed', 'error');
+                }
+            }, 100);
+            
+            // Missing threadId
+            setTimeout(() => {
+                animationManager.updateGILStatus({ state: 'ACQUIRED' });
+                setTimeout(() => {
+                    const threadText = document.querySelector('.gil-thread').textContent;
+                    if (threadText === 'Thread: -1') {
+                        log('✓ Missing threadId defaults to -1', 'success');
+                    } else {
+                        log('✗ Missing threadId test failed', 'error');
+                    }
+                }, 100);
+            }, 300);
+        }
+        
+        // Initial log
+        log('Integration test initialized');
+        log('Click buttons above to test different scenarios');
+    </script>
+</body>
+</html>

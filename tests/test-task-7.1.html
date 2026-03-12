@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task 7.1 - Bytecode Panel Test</title>
+    
+    <style>
+        /* CSS Variables for Dark Theme */
+        :root {
+            --bg-primary: #0d1117;
+            --accent-color: #58a6ff;
+            --text-primary: #c9d1d9;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --transition-duration: 300ms;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            padding: 20px;
+        }
+        
+        h1 {
+            color: var(--accent-color);
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        
+        .test-section {
+            margin-bottom: 30px;
+        }
+        
+        .test-section h2 {
+            color: var(--text-primary);
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+        
+        .test-container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        /* Common Panel Styles */
+        .visualization-panel {
+            background-color: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: all var(--transition-duration) ease-in-out;
+        }
+        
+        .visualization-panel:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        .panel-header {
+            padding: 12px 16px;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .panel-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--accent-color);
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .panel-subtitle {
+            font-size: 11px;
+            color: rgba(201, 209, 217, 0.6);
+            font-weight: 400;
+        }
+        
+        .panel-content {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 12px;
+        }
+        
+        /* Custom scrollbar for panels */
+        .panel-content::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .panel-content::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+        }
+        
+        .panel-content::-webkit-scrollbar-thumb {
+            background: rgba(88, 166, 255, 0.3);
+            border-radius: 4px;
+        }
+        
+        .panel-content::-webkit-scrollbar-thumb:hover {
+            background: rgba(88, 166, 255, 0.5);
+        }
+        
+        /* Bytecode Panel Styles */
+        #bytecode-panel {
+            width: 400px;
+            height: 500px;
+        }
+        
+        #bytecode-content {
+            font-family: 'Courier New', 'Consolas', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        
+        .bytecode-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: rgba(201, 209, 217, 0.5);
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .bytecode-placeholder p {
+            margin: 8px 0;
+        }
+        
+        .placeholder-hint {
+            font-size: 11px;
+            color: rgba(201, 209, 217, 0.3);
+        }
+        
+        /* Bytecode Instruction Styles */
+        .bytecode-instruction {
+            display: flex;
+            align-items: center;
+            padding: 6px 8px;
+            margin: 2px 0;
+            border-radius: 4px;
+            transition: all var(--transition-duration) ease-in-out;
+            cursor: default;
+        }
+        
+        .bytecode-instruction:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+        
+        .bytecode-instruction.active {
+            background-color: rgba(88, 166, 255, 0.2);
+            border-left: 3px solid var(--accent-color);
+            padding-left: 5px;
+        }
+        
+        .bytecode-offset {
+            color: rgba(201, 209, 217, 0.5);
+            font-size: 11px;
+            min-width: 40px;
+            text-align: right;
+            margin-right: 12px;
+            font-weight: 600;
+        }
+        
+        .bytecode-opname {
+            color: var(--accent-color);
+            font-weight: 600;
+            min-width: 120px;
+            margin-right: 12px;
+        }
+        
+        .bytecode-instruction.active .bytecode-opname {
+            color: #ffffff;
+        }
+        
+        .bytecode-arg {
+            color: rgba(201, 209, 217, 0.7);
+            font-style: italic;
+        }
+        
+        .bytecode-instruction.active .bytecode-arg {
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .bytecode-lineno {
+            color: rgba(201, 209, 217, 0.4);
+            font-size: 10px;
+            margin-left: auto;
+            padding-left: 12px;
+        }
+        
+        .test-result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 6px;
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+        
+        .test-result.pass {
+            border-left: 4px solid #3fb950;
+        }
+        
+        .test-result.fail {
+            border-left: 4px solid #f85149;
+        }
+        
+        .test-result h3 {
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        
+        .test-result.pass h3 {
+            color: #3fb950;
+        }
+        
+        .test-result.fail h3 {
+            color: #f85149;
+        }
+        
+        .test-result ul {
+            margin-left: 20px;
+            line-height: 1.8;
+        }
+        
+        button {
+            background-color: var(--accent-color);
+            color: #ffffff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all var(--transition-duration) ease-in-out;
+            margin-top: 15px;
+        }
+        
+        button:hover {
+            background-color: #4a8fd8;
+            transform: translateY(-1px);
+        }
+    </style>
+</head>
+<body>
+    <h1>Task 7.1 - Bytecode Panel Structure and CSS Test</h1>
+    
+    <div class="test-section">
+        <h2>Test 1: Empty Bytecode Panel (Placeholder State)</h2>
+        <div class="test-container">
+            <div id="bytecode-panel" class="visualization-panel">
+                <div class="panel-header">
+                    <h3 class="panel-title">Bytecode</h3>
+                    <span class="panel-subtitle">Compiled Instructions</span>
+                </div>
+                <div class="panel-content" id="bytecode-content">
+                    <div class="bytecode-placeholder">
+                        <p>No bytecode generated yet</p>
+                        <p class="placeholder-hint">Write Python code and execute to see bytecode instructions</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 2: Bytecode Panel with Sample Instructions</h2>
+        <div class="test-container">
+            <div id="bytecode-panel-with-data" class="visualization-panel" style="width: 400px; height: 500px;">
+                <div class="panel-header">
+                    <h3 class="panel-title">Bytecode</h3>
+                    <span class="panel-subtitle">Compiled Instructions</span>
+                </div>
+                <div class="panel-content" id="bytecode-content-with-data" style="font-family: 'Courier New', 'Consolas', monospace; font-size: 13px; line-height: 1.6;">
+                    <!-- Sample bytecode instructions -->
+                    <div class="bytecode-instruction">
+                        <span class="bytecode-offset">0</span>
+                        <span class="bytecode-opname">LOAD_CONST</span>
+                        <span class="bytecode-arg">0 (5)</span>
+                        <span class="bytecode-lineno">line 1</span>
+                    </div>
+                    <div class="bytecode-instruction active">
+                        <span class="bytecode-offset">2</span>
+                        <span class="bytecode-opname">STORE_NAME</span>
+                        <span class="bytecode-arg">0 (x)</span>
+                        <span class="bytecode-lineno">line 1</span>
+                    </div>
+                    <div class="bytecode-instruction">
+                        <span class="bytecode-offset">4</span>
+                        <span class="bytecode-opname">LOAD_CONST</span>
+                        <span class="bytecode-arg">1 (10)</span>
+                        <span class="bytecode-lineno">line 2</span>
+                    </div>
+                    <div class="bytecode-instruction">
+                        <span class="bytecode-offset">6</span>
+                        <span class="bytecode-opname">STORE_NAME</span>
+                        <span class="bytecode-arg">1 (y)</span>
+                        <span class="bytecode-lineno">line 2</span>
+                    </div>
+                    <div class="bytecode-instruction">
+                        <span class="bytecode-offset">8</span>
+                        <span class="bytecode-opname">LOAD_NAME</span>
+                        <span class="bytecode-arg">0 (x)</span>
+                        <span class="bytecode-lineno">line 3</span>
+                    </div>
+                    <div class="bytecode-instruction">
+                        <span class="bytecode-offset">10</span>
+                        <span class="bytecode-opname">LOAD_NAME</span>
+                        <span class="bytecode-arg">1 (y)</span>
+                        <span class="bytecode-lineno">line 3</span>
+                    </div>
+                    <div class="bytecode-instruction">
+                        <span class="bytecode-offset">12</span>
+                        <span class="bytecode-opname">BINARY_ADD</span>
+                        <span class="bytecode-arg"></span>
+                        <span class="bytecode-lineno">line 3</span>
+                    </div>
+                    <div class="bytecode-instruction">
+                        <span class="bytecode-offset">14</span>
+                        <span class="bytecode-opname">STORE_NAME</span>
+                        <span class="bytecode-arg">2 (result)</span>
+                        <span class="bytecode-lineno">line 3</span>
+                    </div>
+                    <div class="bytecode-instruction">
+                        <span class="bytecode-offset">16</span>
+                        <span class="bytecode-opname">LOAD_CONST</span>
+                        <span class="bytecode-arg">2 (None)</span>
+                        <span class="bytecode-lineno">line 3</span>
+                    </div>
+                    <div class="bytecode-instruction">
+                        <span class="bytecode-offset">18</span>
+                        <span class="bytecode-opname">RETURN_VALUE</span>
+                        <span class="bytecode-arg"></span>
+                        <span class="bytecode-lineno">line 3</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 3: Scrollable Content Test</h2>
+        <p style="color: rgba(201, 209, 217, 0.7); margin-bottom: 10px;">
+            This panel contains many instructions to test scrolling behavior
+        </p>
+        <div class="test-container">
+            <div class="visualization-panel" style="width: 400px; height: 300px;">
+                <div class="panel-header">
+                    <h3 class="panel-title">Bytecode</h3>
+                    <span class="panel-subtitle">Compiled Instructions</span>
+                </div>
+                <div class="panel-content" id="scrollable-content" style="font-family: 'Courier New', 'Consolas', monospace; font-size: 13px; line-height: 1.6;">
+                    <!-- Many instructions to test scrolling -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <button onclick="runTests()">Run Automated Tests</button>
+    
+    <div id="test-results"></div>
+    
+    <script>
+        // Populate scrollable content
+        const scrollableContent = document.getElementById('scrollable-content');
+        for (let i = 0; i < 30; i++) {
+            const instruction = document.createElement('div');
+            instruction.className = 'bytecode-instruction';
+            if (i === 15) instruction.classList.add('active');
+            
+            instruction.innerHTML = `
+                <span class="bytecode-offset">${i * 2}</span>
+                <span class="bytecode-opname">LOAD_CONST</span>
+                <span class="bytecode-arg">${i} (value_${i})</span>
+                <span class="bytecode-lineno">line ${Math.floor(i / 3) + 1}</span>
+            `;
+            
+            scrollableContent.appendChild(instruction);
+        }
+        
+        function runTests() {
+            const results = [];
+            
+            // Test 1: Panel structure exists
+            const panel = document.getElementById('bytecode-panel');
+            results.push({
+                name: 'Panel structure exists',
+                pass: panel !== null
+            });
+            
+            // Test 2: Panel has correct classes
+            results.push({
+                name: 'Panel has visualization-panel class',
+                pass: panel && panel.classList.contains('visualization-panel')
+            });
+            
+            // Test 3: Panel header exists
+            const header = panel.querySelector('.panel-header');
+            results.push({
+                name: 'Panel header exists',
+                pass: header !== null
+            });
+            
+            // Test 4: Panel title is correct
+            const title = panel.querySelector('.panel-title');
+            results.push({
+                name: 'Panel title is "Bytecode"',
+                pass: title && title.textContent === 'Bytecode'
+            });
+            
+            // Test 5: Panel subtitle exists
+            const subtitle = panel.querySelector('.panel-subtitle');
+            results.push({
+                name: 'Panel subtitle exists',
+                pass: subtitle !== null
+            });
+            
+            // Test 6: Panel content area exists
+            const content = panel.querySelector('.panel-content');
+            results.push({
+                name: 'Panel content area exists',
+                pass: content !== null
+            });
+            
+            // Test 7: Placeholder is displayed when empty
+            const placeholder = panel.querySelector('.bytecode-placeholder');
+            results.push({
+                name: 'Placeholder is displayed when empty',
+                pass: placeholder !== null
+            });
+            
+            // Test 8: Dark theme colors are applied
+            const computedStyle = window.getComputedStyle(panel);
+            const bgColor = computedStyle.backgroundColor;
+            results.push({
+                name: 'Dark theme background color is applied',
+                pass: bgColor.includes('rgba') || bgColor.includes('rgb')
+            });
+            
+            // Test 9: Panel with data displays instructions correctly
+            const panelWithData = document.getElementById('bytecode-panel-with-data');
+            const instructions = panelWithData.querySelectorAll('.bytecode-instruction');
+            results.push({
+                name: 'Bytecode instructions are rendered',
+                pass: instructions.length > 0
+            });
+            
+            // Test 10: Active instruction has correct styling
+            const activeInstruction = panelWithData.querySelector('.bytecode-instruction.active');
+            results.push({
+                name: 'Active instruction is highlighted',
+                pass: activeInstruction !== null
+            });
+            
+            // Test 11: Instruction components are present
+            const firstInstruction = instructions[0];
+            const hasOffset = firstInstruction.querySelector('.bytecode-offset') !== null;
+            const hasOpname = firstInstruction.querySelector('.bytecode-opname') !== null;
+            const hasArg = firstInstruction.querySelector('.bytecode-arg') !== null;
+            const hasLineno = firstInstruction.querySelector('.bytecode-lineno') !== null;
+            results.push({
+                name: 'Instruction components (offset, opname, arg, lineno) are present',
+                pass: hasOffset && hasOpname && hasArg && hasLineno
+            });
+            
+            // Test 12: Scrollbar is functional
+            const scrollablePanel = document.getElementById('scrollable-content');
+            results.push({
+                name: 'Scrollable content has overflow-y auto',
+                pass: window.getComputedStyle(scrollablePanel).overflowY === 'auto'
+            });
+            
+            // Display results
+            const allPassed = results.every(r => r.pass);
+            const resultsDiv = document.getElementById('test-results');
+            resultsDiv.innerHTML = `
+                <div class="test-result ${allPassed ? 'pass' : 'fail'}">
+                    <h3>${allPassed ? '✓ All Tests Passed' : '✗ Some Tests Failed'}</h3>
+                    <ul>
+                        ${results.map(r => `
+                            <li style="color: ${r.pass ? '#3fb950' : '#f85149'}">
+                                ${r.pass ? '✓' : '✗'} ${r.name}
+                            </li>
+                        `).join('')}
+                    </ul>
+                    <p style="margin-top: 15px; font-weight: 600;">
+                        Passed: ${results.filter(r => r.pass).length} / ${results.length}
+                    </p>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Property Tests - Python Execution Visualizer</title>
+    <script src="https://cdn.jsdelivr.net/npm/fast-check@3.15.0/lib/bundle.js"></script>
+</head>
+<body>
+    <h1>Property-Based Tests</h1>
+    <div id="results"></div>
+    
+    <script>
+        // Copy data models and tests from index.html
+        class ExecutionState {
+            constructor({
+                stepNumber,
+                lineNumber,
+                pipelineStage,
+                instructionPointer,
+                bytecode,
+                callStack,
+                heap,
+                gilStatus,
+                explanation
+            }) {
+                this.stepNumber = stepNumber;
+                this.lineNumber = lineNumber;
+                this.pipelineStage = pipelineStage;
+                this.instructionPointer = instructionPointer;
+                this.bytecode = bytecode;
+                this.callStack = callStack;
+                this.heap = heap;
+                this.gilStatus = gilStatus;
+                this.explanation = explanation;
+            }
+        }
+        
+        class StateStore {
+            constructor() {
+                this.states = [];
+                this.currentIndex = 0;
+            }
+            
+            setStates(states) {
+                this.states = states;
+                this.currentIndex = 0;
+            }
+            
+            getCurrentState() {
+                if (this.states.length === 0) {
+                    return null;
+                }
+                return this.states[this.currentIndex];
+            }
+            
+            stepForward() {
+                if (this.currentIndex < this.states.length - 1) {
+                    this.currentIndex++;
+                    return true;
+                }
+                return false;
+            }
+            
+            stepBack() {
+                if (this.currentIndex > 0) {
+                    this.currentIndex--;
+                    return true;
+                }
+                return false;
+            }
+            
+            reset() {
+                this.currentIndex = 0;
+            }
+            
+            canStepForward() {
+                return this.currentIndex < this.states.length - 1;
+            }
+            
+            canStepBack() {
+                return this.currentIndex > 0;
+            }
+        }
+        
+        // Run tests
+        window.addEventListener('load', function() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<p>Running tests...</p>';
+            
+            try {
+                // Test Property 12: Execution State Completeness
+                console.log('Testing Property 12...');
+                fc.assert(
+                    fc.property(
+                        fc.record({
+                            stepNumber: fc.nat(),
+                            lineNumber: fc.integer({ min: 1, max: 1000 }),
+                            pipelineStage: fc.constantFrom('source', 'tokenizer', 'parser', 'compiler', 'bytecode', 'pvm'),
+                            instructionPointer: fc.nat(),
+                            bytecode: fc.array(fc.record({
+                                offset: fc.nat(),
+                                opname: fc.string(),
+                                arg: fc.oneof(fc.nat(), fc.constant(null)),
+                                argval: fc.anything(),
+                                lineno: fc.integer({ min: 1, max: 1000 })
+                            })),
+                            callStack: fc.array(fc.record({
+                                frameId: fc.string(),
+                                functionName: fc.string(),
+                                localVariables: fc.dictionary(fc.string(), fc.anything()),
+                                returnAddress: fc.nat(),
+                                lineNumber: fc.integer({ min: 1, max: 1000 })
+                            })),
+                            heap: fc.array(fc.record({
+                                objectId: fc.string(),
+                                type: fc.constantFrom('int', 'str', 'list', 'dict', 'function'),
+                                value: fc.anything(),
+                                refCount: fc.nat(),
+                                references: fc.array(fc.string())
+                            })),
+                            gilStatus: fc.record({
+                                state: fc.constantFrom('ACQUIRED', 'RELEASED'),
+                                threadId: fc.integer(),
+                                explanation: fc.string()
+                            }),
+                            explanation: fc.string()
+                        }),
+                        (stateData) => {
+                            const state = new ExecutionState(stateData);
+                            
+                            const hasAllFields = 
+                                state.stepNumber !== undefined &&
+                                state.lineNumber !== undefined &&
+                                state.pipelineStage !== undefined &&
+                                state.instructionPointer !== undefined &&
+                                state.bytecode !== undefined &&
+                                state.callStack !== undefined &&
+                                state.heap !== undefined &&
+                                state.gilStatus !== undefined &&
+                                state.explanation !== undefined;
+                            
+                            return hasAllFields;
+                        }
+                    ),
+                    { numRuns: 100 }
+                );
+                console.log('✓ Property 12 passed');
+                resultsDiv.innerHTML += '<p style="color: green;">✓ Property 12: Execution State Completeness - PASSED</p>';
+                
+                // Test Property 13: Step Forward Advances State
+                console.log('Testing Property 13...');
+                fc.assert(
+                    fc.property(
+                        fc.array(fc.record({
+                            stepNumber: fc.nat(),
+                            lineNumber: fc.integer({ min: 1, max: 100 }),
+                            pipelineStage: fc.constantFrom('source', 'tokenizer', 'parser', 'compiler', 'bytecode', 'pvm'),
+                            instructionPointer: fc.nat(),
+                            bytecode: fc.array(fc.record({
+                                offset: fc.nat(),
+                                opname: fc.string(),
+                                arg: fc.oneof(fc.nat(), fc.constant(null)),
+                                argval: fc.anything(),
+                                lineno: fc.integer({ min: 1, max: 100 })
+                            })),
+                            callStack: fc.array(fc.record({
+                                frameId: fc.string(),
+                                functionName: fc.string(),
+                                localVariables: fc.dictionary(fc.string(), fc.anything()),
+                                returnAddress: fc.nat(),
+                                lineNumber: fc.integer({ min: 1, max: 100 })
+                            })),
+                            heap: fc.array(fc.record({
+                                objectId: fc.string(),
+                                type: fc.constantFrom('int', 'str', 'list', 'dict', 'function'),
+                                value: fc.anything(),
+                                refCount: fc.nat(),
+                                references: fc.array(fc.string())
+                            })),
+                            gilStatus: fc.record({
+                                state: fc.constantFrom('ACQUIRED', 'RELEASED'),
+                                threadId: fc.integer(),
+                                explanation: fc.string()
+                            }),
+                            explanation: fc.string()
+                        }), { minLength: 2 }),
+                        (statesData) => {
+                            const store = new StateStore();
+                            const states = statesData.map(data => new ExecutionState(data));
+                            store.setStates(states);
+                            
+                            for (let i = 0; i < states.length - 1; i++) {
+                                store.currentIndex = i;
+                                const initialIndex = store.currentIndex;
+                                const result = store.stepForward();
+                                
+                                if (!result || store.currentIndex !== initialIndex + 1) {
+                                    return false;
+                                }
+                            }
+                            
+                            return true;
+                        }
+                    ),
+                    { numRuns: 100 }
+                );
+                console.log('✓ Property 13 passed');
+                resultsDiv.innerHTML += '<p style="color: green;">✓ Property 13: Step Forward Advances State - PASSED</p>';
+                
+                // Test Property 14: Step Back Reverses State
+                console.log('Testing Property 14...');
+                fc.assert(
+                    fc.property(
+                        fc.array(fc.record({
+                            stepNumber: fc.nat(),
+                            lineNumber: fc.integer({ min: 1, max: 100 }),
+                            pipelineStage: fc.constantFrom('source', 'tokenizer', 'parser', 'compiler', 'bytecode', 'pvm'),
+                            instructionPointer: fc.nat(),
+                            bytecode: fc.array(fc.record({
+                                offset: fc.nat(),
+                                opname: fc.string(),
+                                arg: fc.oneof(fc.nat(), fc.constant(null)),
+                                argval: fc.anything(),
+                                lineno: fc.integer({ min: 1, max: 100 })
+                            })),
+                            callStack: fc.array(fc.record({
+                                frameId: fc.string(),
+                                functionName: fc.string(),
+                                localVariables: fc.dictionary(fc.string(), fc.anything()),
+                                returnAddress: fc.nat(),
+                                lineNumber: fc.integer({ min: 1, max: 100 })
+                            })),
+                            heap: fc.array(fc.record({
+                                objectId: fc.string(),
+                                type: fc.constantFrom('int', 'str', 'list', 'dict', 'function'),
+                                value: fc.anything(),
+                                refCount: fc.nat(),
+                                references: fc.array(fc.string())
+                            })),
+                            gilStatus: fc.record({
+                                state: fc.constantFrom('ACQUIRED', 'RELEASED'),
+                                threadId: fc.integer(),
+                                explanation: fc.string()
+                            }),
+                            explanation: fc.string()
+                        }), { minLength: 2 }),
+                        (statesData) => {
+                            const store = new StateStore();
+                            const states = statesData.map(data => new ExecutionState(data));
+                            store.setStates(states);
+                            
+                            for (let i = 1; i < states.length; i++) {
+                                store.currentIndex = i;
+                                const initialIndex = store.currentIndex;
+                                const result = store.stepBack();
+                                
+                                if (!result || store.currentIndex !== initialIndex - 1) {
+                                    return false;
+                                }
+                            }
+                            
+                            return true;
+                        }
+                    ),
+                    { numRuns: 100 }
+                );
+                console.log('✓ Property 14 passed');
+                resultsDiv.innerHTML += '<p style="color: green;">✓ Property 14: Step Back Reverses State - PASSED</p>';
+                
+                // Test Property 15: Reset Returns to Initial State
+                console.log('Testing Property 15...');
+                fc.assert(
+                    fc.property(
+                        fc.array(fc.record({
+                            stepNumber: fc.nat(),
+                            lineNumber: fc.integer({ min: 1, max: 100 }),
+                            pipelineStage: fc.constantFrom('source', 'tokenizer', 'parser', 'compiler', 'bytecode', 'pvm'),
+                            instructionPointer: fc.nat(),
+                            bytecode: fc.array(fc.record({
+                                offset: fc.nat(),
+                                opname: fc.string(),
+                                arg: fc.oneof(fc.nat(), fc.constant(null)),
+                                argval: fc.anything(),
+                                lineno: fc.integer({ min: 1, max: 100 })
+                            })),
+                            callStack: fc.array(fc.record({
+                                frameId: fc.string(),
+                                functionName: fc.string(),
+                                localVariables: fc.dictionary(fc.string(), fc.anything()),
+                                returnAddress: fc.nat(),
+                                lineNumber: fc.integer({ min: 1, max: 100 })
+                            })),
+                            heap: fc.array(fc.record({
+                                objectId: fc.string(),
+                                type: fc.constantFrom('int', 'str', 'list', 'dict', 'function'),
+                                value: fc.anything(),
+                                refCount: fc.nat(),
+                                references: fc.array(fc.string())
+                            })),
+                            gilStatus: fc.record({
+                                state: fc.constantFrom('ACQUIRED', 'RELEASED'),
+                                threadId: fc.integer(),
+                                explanation: fc.string()
+                            }),
+                            explanation: fc.string()
+                        }), { minLength: 1 }),
+                        fc.nat(),
+                        (statesData, randomIndex) => {
+                            const store = new StateStore();
+                            const states = statesData.map(data => new ExecutionState(data));
+                            store.setStates(states);
+                            
+                            if (states.length > 0) {
+                                store.currentIndex = randomIndex % states.length;
+                            }
+                            
+                            store.reset();
+                            
+                            return store.currentIndex === 0;
+                        }
+                    ),
+                    { numRuns: 100 }
+                );
+                console.log('✓ Property 15 passed');
+                resultsDiv.innerHTML += '<p style="color: green;">✓ Property 15: Reset Returns to Initial State - PASSED</p>';
+                
+                resultsDiv.innerHTML += '<h2 style="color: green;">All tests passed!</h2>';
+                
+            } catch (error) {
+                console.error('Test failed:', error);
+                resultsDiv.innerHTML += '<p style="color: red;">✗ Test failed: ' + error.message + '</p>';
+            }
+        });
+    </script>
+</body>
+</html>
