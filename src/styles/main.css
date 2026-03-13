@@ -1695,12 +1695,206 @@
         min-width: 350px;
         padding: 16px;
     }
-    
+
     .explanation-title {
         font-size: 14px;
     }
-    
+
     .explanation-section-content {
         font-size: 13px;
     }
+}
+
+/* ===== TABLET (768px – 1024px) ===== */
+@media (min-width: 768px) and (max-width: 1024px) {
+    #app-container {
+        grid-template-columns: 40% 60%;
+    }
+
+    .pipeline-stage-icon { font-size: 18px; }
+    .pipeline-stage-name { font-size: 10px; }
+
+    .control-btn {
+        min-width: 70px;
+        padding: 8px 12px;
+    }
+
+    .speed-control {
+        min-width: 200px;
+    }
+
+    #explanation-tooltip {
+        min-width: 320px;
+        max-width: 480px;
+    }
+}
+
+/* ===== MOBILE (< 768px) ===== */
+@media (max-width: 767px) {
+
+    /* --- Layout: panels stack vertically --- */
+    #app-container {
+        display: flex;
+        flex-direction: column;
+        grid-template-columns: unset;
+    }
+
+    /* Editor panel: fixed top portion */
+    #left-panel {
+        grid-column: unset;
+        grid-row: unset;
+        height: 38vh;
+        min-height: 180px;
+        flex-shrink: 0;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    /* Right panel: remaining space, scrolls internally */
+    #right-panel {
+        grid-column: unset;
+        grid-row: unset;
+        flex: 1;
+        height: 62vh;
+        min-height: 0;
+        overflow-y: auto;
+    }
+
+    /* --- GIL indicator: fixed so it stays visible while scrolling --- */
+    #gil-indicator {
+        position: fixed;
+        top: 6px;
+        right: 6px;
+        width: 120px;
+        height: 28px;
+        padding: 4px 8px;
+        z-index: 200;
+    }
+
+    .gil-icon { font-size: 13px; }
+    .gil-state { font-size: 9px; }
+    .gil-thread { font-size: 8px; }
+
+    #gil-indicator::after {
+        width: 200px;
+        font-size: 10px;
+        right: 0;
+    }
+
+    /* --- Pipeline: compact height, horizontal scroll --- */
+    #pipeline-diagram {
+        height: 80px;
+        padding: 8px;
+        justify-content: flex-start;
+        overflow-x: auto;
+        flex-shrink: 0;
+    }
+
+    .pipeline-container {
+        min-width: 500px;
+        width: max-content;
+    }
+
+    .pipeline-stage {
+        padding: 5px 4px;
+        min-width: 64px;
+    }
+
+    .pipeline-stage-icon {
+        font-size: 14px;
+        margin-bottom: 3px;
+    }
+
+    .pipeline-stage-name {
+        font-size: 8px;
+    }
+
+    .pipeline-arrow {
+        font-size: 12px;
+        margin: 0 4px;
+    }
+
+    /* --- Visualization panels: vertical stack --- */
+    #visualization-panels {
+        flex: none;
+        height: auto;
+        flex-direction: column;
+        overflow-x: hidden;
+        overflow-y: visible;
+        padding: 8px;
+        gap: 8px;
+    }
+
+    .visualization-panel {
+        height: 220px;
+        min-width: unset;
+        width: 100%;
+        flex-shrink: 0;
+    }
+
+    #bytecode-panel,
+    #stack-panel,
+    #memory-panel {
+        flex: none;
+        min-width: unset;
+        height: 220px;
+    }
+
+    /* --- Control bar: two rows, compact buttons --- */
+    #control-bar {
+        flex-shrink: 0;
+        padding: 8px 10px;
+        min-height: unset;
+    }
+
+    .control-bar-container {
+        flex-direction: column;
+        width: 100%;
+        gap: 8px;
+    }
+
+    .control-buttons {
+        justify-content: center;
+        gap: 5px;
+        flex-wrap: wrap;
+    }
+
+    .control-btn {
+        min-width: 52px;
+        padding: 7px 8px;
+    }
+
+    .control-btn-icon {
+        font-size: 16px;
+    }
+
+    .control-btn-label {
+        font-size: 9px;
+    }
+
+    .speed-control {
+        min-width: unset;
+        width: 100%;
+        padding: 8px 10px;
+        gap: 8px;
+    }
+
+    /* --- Explanation tooltip: full width --- */
+    #explanation-tooltip {
+        min-width: unset;
+        max-width: 92vw;
+        width: 92vw;
+        left: 4%;
+        transform: none;
+        bottom: 5%;
+        padding: 14px;
+    }
+
+    @keyframes tooltipFadeIn {
+        0%   { opacity: 0; transform: translateY(20px); }
+        100% { opacity: 1; transform: translateY(0); }
+    }
+
+    .explanation-title { font-size: 14px; }
+    .explanation-section-content { font-size: 12px; }
 }
